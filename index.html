@@ -1,0 +1,1220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Riverbank Sky Planner</title>
+<meta name="description" content="Tonight's darkness, Moon, clouds and the best eastern-sky targets for a Seestar 50 and Meade ETX.">
+<meta name="theme-color" content="#090d18">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sky Planner">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one night-sky console. Header + time scrubber, then a wide eastern-horizon panorama
+   beside a "tonight" column (darkness, moon, clouds), then the target list and later-tonight list.
+   Deliberately dark-only: this is used outdoors at night. "Red light" mode keeps dark adaptation. */
+:root {
+  color-scheme: dark;
+  --bg: #090d18;
+  --panel: #10172a;
+  --panel-2: #162039;
+  --line: #24304f;
+  --ink: #e3e8f4;
+  --muted: #8f9ab5;
+  --faint: #5d6886;
+  --accent: #f0b35b;      /* lamp amber */
+  --accent-ink: #1b1204;
+  --sky-hi: #0d1631;
+  --sky-lo: #1b2a52;
+  --ground: #0c1109;
+  --good: #6fd39a;
+  --warn: #e9c45c;
+  --bad: #ef7c6c;
+  --planet: #ffd99a;
+  --dso: #9cc3ff;
+  --dbl: #d7b6ff;
+  --ecl: #f0b35b;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r: 10px;
+}
+:root[data-night="red"] {
+  --bg: #0a0000; --panel: #140202; --panel-2: #1c0404; --line: #3a0a0a;
+  --ink: #ff6b5a; --muted: #c2402f; --faint: #7a1f16; --accent: #ff3b2a; --accent-ink: #140000;
+  --sky-hi: #100101; --sky-lo: #220404; --ground: #060000;
+  --good: #ff6b5a; --warn: #e2402c; --bad: #a11f12;
+  --planet: #ff7a66; --dso: #e34a36; --dbl: #c9382a; --ecl: #8f2416;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px 40px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+.wrap > *, .panel > * { min-width: 0; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h1 { font-size: 1.6rem; }
+h2 { font-size: 1.15rem; }
+h3 { font-size: 1rem; }
+.eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 600; }
+.mono, .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+a { color: var(--accent); }
+button, select, input { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible, canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Header */
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 20px; }
+.top .where { display: grid; gap: 2px; }
+.top .where .muted { font-size: 0.85rem; }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px;
+  padding: 6px 14px; cursor: pointer; font-size: 0.85rem; font-weight: 500;
+}
+.btn:hover { border-color: var(--muted); }
+.btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+/* Status strip */
+.status { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; padding: 12px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); }
+.status .big { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; border: 1px solid currentColor; white-space: nowrap; }
+.pill.good { color: var(--good); } .pill.warn { color: var(--warn); } .pill.bad { color: var(--bad); } .pill.info { color: var(--muted); }
+.kv { display: grid; gap: 1px; }
+.kv .k { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.kv .v { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: 0.95rem; }
+
+/* Scrubber */
+.scrub { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
+.scrub input[type=range] { width: 100%; accent-color: var(--accent); }
+.scrub .when { font-family: var(--font-data); min-width: 8.5em; text-align: right; }
+.scrub-ticks { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--faint); font-family: var(--font-data); grid-column: 2; margin-top: -6px; }
+
+/* Main grid */
+.main { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 900px) { .main { grid-template-columns: 1fr; } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; display: grid; gap: 12px; min-width: 0; }
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.side { display: grid; gap: 18px; min-width: 0; }
+
+/* Sky canvas */
+.skybox { position: relative; width: 100%; }
+#sky { width: 100%; display: block; border-radius: 6px; touch-action: manipulation; cursor: crosshair; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.78rem; color: var(--muted); }
+.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
+.picked { font-size: 0.88rem; min-height: 1.4em; }
+
+/* Moon */
+.moon { display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: center; }
+#moonCanvas { width: 96px; height: 96px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; }
+.note { font-size: 0.86rem; color: var(--muted); }
+.note strong { color: var(--ink); font-weight: 600; }
+
+/* Clouds */
+.hours { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(42px, 1fr); gap: 3px; overflow-x: auto; padding-bottom: 4px; }
+.hr { display: grid; gap: 3px; text-align: center; font-size: 0.7rem; font-family: var(--font-data); }
+.hr .bar { height: 54px; border-radius: 4px; background: var(--panel-2); position: relative; overflow: hidden; }
+.hr .bar span { position: absolute; left: 0; right: 0; bottom: 0; background: var(--muted); opacity: 0.75; }
+.hr.clear .bar { box-shadow: inset 0 0 0 1px var(--good); }
+.hr .t { color: var(--muted); }
+.links { display: flex; flex-wrap: wrap; gap: 8px; }
+.links a { font-size: 0.85rem; padding: 5px 12px; border: 1px solid var(--line); border-radius: 999px; text-decoration: none; }
+
+/* Targets */
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.targets { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.t-card { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.t-card.sel { border-color: var(--accent); }
+.t-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.t-name { font-weight: 600; font-size: 0.98rem; }
+.t-type { font-size: 0.75rem; color: var(--muted); }
+.t-pos { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: 0.82rem; white-space: nowrap; }
+.t-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.chip.scope { color: var(--ink); }
+.chip.star { color: var(--accent); border-color: var(--accent); }
+.chip.good { color: var(--good); } .chip.warn { color: var(--warn); } .chip.bad { color: var(--bad); }
+.t-tip { font-size: 0.83rem; color: var(--muted); }
+.empty { color: var(--muted); font-size: 0.9rem; padding: 8px 0; }
+
+.picks { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.pick { border-left: 3px solid var(--accent); padding: 4px 0 4px 12px; display: grid; gap: 2px; }
+.pick .eyebrow { color: var(--accent); }
+
+table { border-collapse: collapse; width: 100%; font-size: 0.86rem; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+td.num { font-family: var(--font-data); white-space: nowrap; }
+.tablewrap { overflow-x: auto; }
+
+details.settings summary { cursor: pointer; font-weight: 600; }
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 14px; margin-top: 12px; }
+.form label { display: grid; gap: 4px; font-size: 0.8rem; color: var(--muted); }
+.form input, .form select { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; color: var(--ink); }
+.foot { font-size: 0.78rem; color: var(--faint); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="where">
+      <span class="eyebrow" id="locLabel">Riverbank, California · 37.73° N 120.94° W</span>
+      <h1>Riverbank Sky Planner</h1>
+    </div>
+    <div class="toolbar">
+      <button class="btn" id="btnNow" type="button">Now</button>
+      <button class="btn" id="btnDark" type="button">Tonight at dark</button>
+      <button class="btn" id="btnRed" type="button" aria-pressed="false">Red light</button>
+    </div>
+  </header>
+
+  <section class="status" aria-live="polite">
+    <div class="kv"><span class="k">Showing</span><span class="big" id="stWhen">—</span></div>
+    <span class="pill info" id="stSky">—</span>
+    <div class="kv"><span class="k">Sunset</span><span class="v" id="stSunset">—</span></div>
+    <div class="kv"><span class="k">Full dark</span><span class="v" id="stDusk">—</span></div>
+    <div class="kv"><span class="k">Dawn begins</span><span class="v" id="stDawn">—</span></div>
+    <div class="kv"><span class="k">Sunrise</span><span class="v" id="stSunrise">—</span></div>
+    <div class="kv"><span class="k">Moon-free dark</span><span class="v" id="stMoonFree">—</span></div>
+  </section>
+
+  <section class="panel" aria-label="Time of night">
+    <div class="scrub">
+      <span class="eyebrow">Time</span>
+      <input type="range" id="scrub" min="0" max="100" step="1" value="0" aria-label="Time tonight">
+      <span class="when" id="scrubWhen">—</span>
+      <div class="scrub-ticks" id="scrubTicks"></div>
+    </div>
+  </section>
+
+  <div class="main">
+    <section class="panel" aria-label="Sky view">
+      <div class="panel-head">
+        <h2 id="skyTitle">Eastern sky</h2>
+        <div class="toolbar">
+          <button class="btn" type="button" data-view="east" aria-pressed="true">East</button>
+          <button class="btn" type="button" data-view="west" aria-pressed="false">West</button>
+        </div>
+      </div>
+      <div class="skybox"><canvas id="sky" tabindex="0" aria-label="Panorama of the sky from north through east to south, with planets, the Moon and deep-sky targets plotted by altitude and direction"></canvas></div>
+      <div class="legend">
+        <span><i style="background:var(--planet)"></i>Planets</span>
+        <span><i style="background:var(--dso)"></i>Deep sky</span>
+        <span><i style="background:var(--dbl)"></i>Double stars</span>
+        <span><i style="background:var(--ecl);border-radius:0;height:2px;width:14px;vertical-align:3px"></i>Ecliptic</span>
+        <span>Shaded band: your clear view</span>
+      </div>
+      <div class="picked" id="picked">Tap a dot to see what it is.</div>
+    </section>
+
+    <div class="side">
+      <section class="panel" aria-label="Moon">
+        <div class="panel-head"><h2>Moon</h2><span class="pill info" id="moonPill">—</span></div>
+        <div class="moon">
+          <canvas id="moonCanvas" width="192" height="192" aria-hidden="true"></canvas>
+          <div class="grid2">
+            <div class="kv"><span class="k">Lit</span><span class="v" id="mIllum">—</span></div>
+            <div class="kv"><span class="k">Age</span><span class="v" id="mAge">—</span></div>
+            <div class="kv"><span class="k">Position</span><span class="v" id="mPos">—</span></div>
+            <div class="kv"><span class="k">Distance</span><span class="v" id="mDist">—</span></div>
+            <div class="kv"><span class="k" id="mRiseK">Rises</span><span class="v" id="mRise">—</span></div>
+            <div class="kv"><span class="k">Sets</span><span class="v" id="mSet">—</span></div>
+            <div class="kv"><span class="k">Next full</span><span class="v" id="mFull">—</span></div>
+            <div class="kv"><span class="k">Next new</span><span class="v" id="mNew">—</span></div>
+          </div>
+        </div>
+        <p class="note" id="moonNote" style="margin:0"></p>
+      </section>
+
+      <section class="panel" aria-label="Clouds">
+        <div class="panel-head"><h2>Clouds tonight</h2><span class="pill info" id="wxPill">Loading</span></div>
+        <div id="wxBody" class="note">Checking the forecast…</div>
+        <div class="links">
+          <a href="https://clearoutside.com/forecast/37.73/-120.94" target="_blank" rel="noopener" id="lnkClear">Clear Outside</a>
+          <a href="https://forecast.weather.gov/MapClick.php?lat=37.73&amp;lon=-120.94&amp;FcstType=graphical" target="_blank" rel="noopener" id="lnkNws">NWS hourly</a>
+          <a href="https://www.astrospheric.com/" target="_blank" rel="noopener">Astrospheric</a>
+          <a href="https://www.cleardarksky.com/csk/" target="_blank" rel="noopener">Clear Sky Charts</a>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <section class="panel" aria-label="Best picks">
+    <div class="panel-head"><h2>Best bets right now</h2><span class="muted" id="picksSub" style="font-size:.85rem"></span></div>
+    <div class="picks" id="picks"></div>
+  </section>
+
+  <section class="panel" aria-label="Targets">
+    <div class="panel-head">
+      <h2 id="listTitle">Up in the east</h2>
+      <span class="muted" id="listCount" style="font-size:.85rem"></span>
+    </div>
+    <div class="filters" id="filters">
+      <button class="btn" type="button" data-f="all" aria-pressed="true">Everything</button>
+      <button class="btn" type="button" data-f="seestar" aria-pressed="false">Seestar picks</button>
+      <button class="btn" type="button" data-f="etx" aria-pressed="false">ETX picks</button>
+      <button class="btn" type="button" data-f="planet" aria-pressed="false">Planets &amp; Moon</button>
+      <button class="btn" type="button" data-f="galaxy" aria-pressed="false">Galaxies</button>
+      <button class="btn" type="button" data-f="nebula" aria-pressed="false">Nebulae</button>
+      <button class="btn" type="button" data-f="cluster" aria-pressed="false">Clusters</button>
+      <button class="btn" type="button" data-f="double" aria-pressed="false">Double stars</button>
+      <button class="btn" type="button" id="btnWhole" aria-pressed="false">Whole sky</button>
+    </div>
+    <div class="targets" id="targets"></div>
+  </section>
+
+  <section class="panel" aria-label="Rising later">
+    <div class="panel-head"><h2>Rising into your view later tonight</h2></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Object</th><th>Type</th><th>Enters view</th><th>Highest</th><th>Best for</th></tr></thead>
+      <tbody id="later"></tbody>
+    </table></div>
+  </section>
+
+  <section class="panel" aria-label="Meteor showers">
+    <div class="panel-head"><h2>Meteor showers</h2><span class="muted" style="font-size:.85rem">Active now or starting within 30 days</span></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Shower</th><th>Peak</th><th>Rate at peak</th><th>Radiant at 2 AM</th><th>Moon at peak</th></tr></thead>
+      <tbody id="showers"></tbody>
+    </table></div>
+  </section>
+
+  <section class="panel">
+    <details class="settings">
+      <summary>Location and view settings</summary>
+      <form class="form" id="settingsForm">
+        <label for="sLat">Latitude<input id="sLat" type="number" step="0.01" min="-90" max="90"></label>
+        <label for="sLon">Longitude (west is negative)<input id="sLon" type="number" step="0.01" min="-180" max="180"></label>
+        <label for="sName">Place name<input id="sName" type="text" maxlength="40"></label>
+        <label for="sAzMin">Clear view from (° azimuth)<input id="sAzMin" type="number" min="0" max="359"></label>
+        <label for="sAzMax">Clear view to (° azimuth)<input id="sAzMax" type="number" min="1" max="360"></label>
+        <label for="sMinAlt">Lowest altitude worth trying (°)<input id="sMinAlt" type="number" min="0" max="60"></label>
+        <label for="sSave" style="align-self:end"><button class="btn" id="sSave" type="submit">Save settings</button></label>
+      </form>
+      <p class="foot">Azimuth runs clockwise from north: 45 is NE, 90 is due east, 135 is SE. Settings stay on this device.</p>
+    </details>
+  </section>
+
+  <p class="foot">Positions are computed on your device with Astronomy Engine. Cloud forecast from Open-Meteo when this page can reach it. Seestar 50 field ≈ 1.3° × 0.7°; ETX 4″ assumes ~1,470 mm focal length (26 mm eyepiece ≈ 57×, ~0.9° field).</p>
+</div>
+
+<script src="astronomy.browser.min.js"></script>
+<script>
+(function () {
+"use strict";
+const A = window.Astronomy;
+
+/* ---------------- Settings ---------------- */
+const DEFAULTS = { lat: 37.73, lon: -120.94, name: "Riverbank, California", tz: "America/Los_Angeles", azMin: 40, azMax: 150, minAlt: 15 };
+function loadJSON(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
+function saveJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+const cfg = Object.assign({}, DEFAULTS, loadJSON("sky.cfg") || {});
+const ui = Object.assign({ view: "east", filter: "all", whole: false, red: false }, loadJSON("sky.ui") || {});
+let observer = new A.Observer(cfg.lat, cfg.lon, 40);
+
+/* ---------------- Catalog ----------------
+   ra in hours (J2000), dec in degrees, mag visual, size in arcminutes.
+   kind: galaxy | emission | reflection | planetary | snr | open | globular | double
+   Add new objects here; everything else is derived. */
+const CATALOG = [
+  ["M31","Andromeda Galaxy","galaxy",0.712,41.27,3.4,178,"Bigger than the Seestar frame; use mosaic mode for the whole disk."],
+  ["M33","Triangulum Galaxy","galaxy",1.564,30.66,5.7,70,"Faint and spread out. Needs a moonless sky and an hour of stacking."],
+  ["M32","M32 (Andromeda companion)","galaxy",0.712,40.87,8.1,8,""],
+  ["M110","M110 (Andromeda companion)","galaxy",0.673,41.69,8.5,22,""],
+  ["NGC 891","Silver Sliver Galaxy","galaxy",2.376,42.35,9.9,13,"Edge-on galaxy with a dust lane. Stack 60+ minutes."],
+  ["M74","Phantom Galaxy","galaxy",1.611,15.78,9.4,10,"Face-on spiral; low surface brightness."],
+  ["M77","Cetus A","galaxy",2.711,-0.01,8.9,7,""],
+  ["NGC 253","Sculptor Galaxy","galaxy",0.793,-25.29,7.1,27,"Stays low from California; catch it near the south."],
+  ["NGC 2903","NGC 2903","galaxy",9.536,21.50,9.0,12,""],
+  ["M81","Bode's Galaxy","galaxy",9.926,69.07,6.9,26,"Pairs with M82 in one Seestar mosaic."],
+  ["M82","Cigar Galaxy","galaxy",9.931,69.68,8.4,11,""],
+  ["M65","Leo Triplet (M65)","galaxy",11.315,13.09,9.3,9,"M65, M66 and NGC 3628 nearly fit one Seestar frame."],
+  ["M66","Leo Triplet (M66)","galaxy",11.337,12.99,8.9,9,""],
+  ["M51","Whirlpool Galaxy","galaxy",13.498,47.20,8.4,11,"Spiral arms show after about 30 minutes in the Seestar."],
+  ["M101","Pinwheel Galaxy","galaxy",14.054,54.35,7.9,29,""],
+  ["M104","Sombrero Galaxy","galaxy",12.666,-11.62,8.0,9,"Small but bright; the dust lane shows in the ETX on a steady night."],
+  ["M64","Black Eye Galaxy","galaxy",12.945,21.68,8.5,10,""],
+  ["M87","Virgo A","galaxy",12.514,12.39,8.6,8,""],
+  ["M106","M106","galaxy",12.316,47.30,8.4,19,""],
+  ["M63","Sunflower Galaxy","galaxy",13.264,42.03,8.6,13,""],
+  ["NGC 4565","Needle Galaxy","galaxy",12.606,25.99,9.6,16,""],
+  ["NGC 7331","NGC 7331","galaxy",22.617,34.42,9.5,10,""],
+  ["M42","Orion Nebula","emission",5.588,-5.39,4.0,85,"The best nebula for both scopes. Trapezium stars split in the ETX."],
+  ["M43","De Mairan's Nebula","emission",5.593,-5.27,9.0,20,""],
+  ["NGC 1977","Running Man Nebula","reflection",5.590,-4.83,7.0,20,""],
+  ["IC 434","Horsehead Nebula","emission",5.683,-2.46,7.3,60,"Seestar with the light-pollution filter; frame it with the Flame."],
+  ["NGC 2024","Flame Nebula","emission",5.698,-1.85,7.2,30,""],
+  ["M78","M78","reflection",5.779,0.08,8.3,8,""],
+  ["M1","Crab Nebula","snr",5.575,22.01,8.4,6,"Small; the Seestar shows its filaments with the filter."],
+  ["IC 405","Flaming Star Nebula","emission",5.272,34.27,6.0,30,""],
+  ["NGC 1499","California Nebula","emission",4.017,36.42,6.0,160,"Huge and faint. Seestar mosaic with the light-pollution filter."],
+  ["NGC 2237","Rosette Nebula","emission",6.533,5.04,9.0,80,"Slightly larger than one frame; a 2-panel mosaic covers it."],
+  ["NGC 2264","Cone Nebula & Christmas Tree","emission",6.685,9.90,3.9,40,""],
+  ["NGC 2174","Monkey Head Nebula","emission",6.163,20.50,6.8,40,""],
+  ["IC 1805","Heart Nebula","emission",2.555,61.45,6.5,60,"Use the light-pollution filter; it works even with some moonlight."],
+  ["IC 1848","Soul Nebula","emission",2.855,60.43,6.5,60,""],
+  ["NGC 281","Pacman Nebula","emission",0.879,56.63,7.4,35,""],
+  ["NGC 7635","Bubble Nebula","emission",23.344,61.20,10.0,15,""],
+  ["NGC 7000","North America Nebula","emission",20.980,44.33,4.0,120,""],
+  ["IC 5070","Pelican Nebula","emission",20.844,44.35,8.0,60,""],
+  ["NGC 6992","Eastern Veil Nebula","snr",20.943,31.72,7.0,60,""],
+  ["NGC 6960","Western Veil (Witch's Broom)","snr",20.761,30.71,7.0,70,""],
+  ["NGC 6888","Crescent Nebula","emission",20.200,38.35,7.4,18,""],
+  ["M27","Dumbbell Nebula","planetary",19.993,22.72,7.5,8,"Bright enough to see its shape in the ETX."],
+  ["M57","Ring Nebula","planetary",18.893,33.03,8.8,1.4,"A smoke ring at 100× or more in the ETX."],
+  ["M97","Owl Nebula","planetary",11.248,55.02,9.9,3.4,""],
+  ["M76","Little Dumbbell","planetary",1.705,51.58,10.1,2.7,""],
+  ["NGC 7293","Helix Nebula","planetary",22.494,-20.84,7.6,16,"Large and dim; the Seestar does far better than the eye."],
+  ["NGC 2392","Eskimo Nebula","planetary",7.488,20.91,9.2,0.8,"Tiny and bright; use high power in the ETX."],
+  ["NGC 7662","Blue Snowball","planetary",23.431,42.54,8.6,0.5,"Looks blue in the ETX at high power."],
+  ["NGC 6543","Cat's Eye Nebula","planetary",17.976,66.63,8.1,0.4,""],
+  ["NGC 6826","Blinking Planetary","planetary",19.749,50.53,8.8,0.5,""],
+  ["M8","Lagoon Nebula","emission",18.060,-24.38,6.0,90,""],
+  ["M20","Trifid Nebula","emission",18.043,-23.03,6.3,28,""],
+  ["M16","Eagle Nebula","emission",18.313,-13.79,6.0,35,""],
+  ["M17","Omega Nebula","emission",18.346,-16.18,6.0,11,""],
+  ["M45","Pleiades","open",3.783,24.12,1.6,110,"Fills the Seestar frame; blue reflection nebulosity shows with stacking."],
+  ["Hyades","Hyades","open",4.45,15.87,0.5,330,"Too big for either scope; enjoy it in binoculars."],
+  ["NGC 869/884","Double Cluster","open",2.333,57.13,4.3,60,"Both clusters fit the Seestar frame. Lovely at low power in the ETX."],
+  ["NGC 457","Owl Cluster","open",1.322,58.29,6.4,13,""],
+  ["M103","M103","open",1.555,60.66,7.4,6,""],
+  ["M52","M52","open",23.403,61.59,7.3,13,""],
+  ["NGC 7789","Caroline's Rose","open",23.950,56.72,6.7,16,""],
+  ["M34","M34","open",2.702,42.78,5.5,35,""],
+  ["M36","M36","open",5.602,34.14,6.3,12,""],
+  ["M37","M37","open",5.873,32.55,6.2,24,"The richest of the three Auriga clusters."],
+  ["M38","M38","open",5.478,35.83,7.4,21,""],
+  ["M35","M35","open",6.148,24.33,5.3,28,""],
+  ["M41","M41","open",6.783,-20.73,4.5,38,""],
+  ["M50","M50","open",7.053,-8.34,5.9,16,""],
+  ["M46","M46","open",7.696,-14.82,6.1,27,"Has a small planetary nebula (NGC 2438) inside it."],
+  ["M47","M47","open",7.610,-14.49,4.4,30,""],
+  ["M93","M93","open",7.743,-23.86,6.0,22,""],
+  ["M48","M48","open",8.230,-5.75,5.8,54,""],
+  ["M44","Beehive Cluster","open",8.667,19.67,3.7,95,""],
+  ["M67","M67","open",8.855,11.81,6.1,30,""],
+  ["M39","M39","open",21.535,48.43,4.6,32,""],
+  ["M11","Wild Duck Cluster","open",18.851,-6.27,5.8,14,""],
+  ["M13","Hercules Cluster","globular",16.695,36.46,5.8,20,"Edges resolve into stars at high power in the ETX."],
+  ["M92","M92","globular",17.285,43.14,6.4,14,""],
+  ["M3","M3","globular",13.703,28.38,6.2,18,""],
+  ["M5","M5","globular",15.310,2.08,5.6,23,""],
+  ["M15","M15","globular",21.500,12.17,6.2,18,"Bright, dense core; good in both scopes."],
+  ["M2","M2","globular",21.558,-0.82,6.5,16,""],
+  ["M56","M56","globular",19.277,30.18,8.3,9,""],
+  ["M71","M71","globular",19.896,18.78,8.2,7,""],
+  ["M22","M22","globular",18.607,-23.90,5.1,32,""],
+  ["M79","M79","globular",5.403,-24.52,7.7,10,""],
+  ["Albireo","Albireo (β Cyg)","double",19.512,27.96,3.1,0.58,"Gold and blue pair, 35″ apart. Easy at low power."],
+  ["Almach","Almach (γ And)","double",2.065,42.33,2.3,0.16,"Orange and blue, 9.6″ apart."],
+  ["Mesarthim","Mesarthim (γ Ari)","double",1.892,19.29,3.9,0.13,"Matched white pair, 7.5″ apart."],
+  ["Achird","Achird (η Cas)","double",0.818,57.82,3.4,0.22,"Yellow and red-orange, 13″ apart."],
+  ["Polaris","Polaris","double",2.530,89.26,2.0,0.3,"Faint companion 18″ away; a nice test at 100×."],
+  ["Castor","Castor (α Gem)","double",7.577,31.89,1.6,0.08,"Two white stars about 5″ apart; use 150× or more."],
+  ["Rigel","Rigel (β Ori)","double",5.242,-8.20,0.1,0.16,"A faint companion 9.5″ away hides in the glare. Steady air helps."],
+  ["Sigma Ori","Sigma Orionis","double",5.646,-2.60,3.8,0.7,"A small multiple-star system near the Horsehead."],
+  ["Beta Mon","Beta Monocerotis","double",6.480,-7.03,3.8,0.12,"Three nearly equal stars in a tight arc."],
+  ["Algieba","Algieba (γ Leo)","double",10.333,19.84,2.0,0.08,"Golden pair 4.6″ apart."],
+  ["Mizar","Mizar & Alcor","double",13.399,54.93,2.2,12,"Mizar splits at low power; Alcor is visible by eye."],
+  ["Cor Caroli","Cor Caroli (α CVn)","double",12.934,38.32,2.9,0.32,""],
+  ["Izar","Izar (ε Boo)","double",14.750,27.07,2.4,0.05,"Orange and blue-green, 2.9″ apart. Needs 200× and steady air."],
+  ["Epsilon Lyr","Double Double (ε Lyr)","double",18.739,39.67,4.7,3.5,"Two pairs, each 2.3″ apart, at 150× or more."],
+  ["61 Cyg","61 Cygni","double",21.069,38.75,5.2,0.5,"Orange pair 31″ apart, and one of the nearest stars."],
+  ["Delta Cep","Delta Cephei","double",22.486,58.42,4.0,0.7,"Yellow and blue; also a famous variable star."],
+].map(function (r) {
+  const raRad = r[3] * 15 * Math.PI / 180, decRad = r[4] * Math.PI / 180;
+  return { id: r[0], name: r[1], kind: r[2], ra: r[3], dec: r[4], mag: r[5], size: r[6], note: r[7],
+    v: { x: Math.cos(decRad) * Math.cos(raRad), y: Math.cos(decRad) * Math.sin(raRad), z: Math.sin(decRad) } };
+});
+
+const PLANETS = ["Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"];
+const PLANET_NOTES = {
+  Mercury: "Low in twilight. Catch it before it sinks.",
+  Venus: "Shows phases in the ETX. Too bright for detail, so try it in twilight.",
+  Mars: "Small disk; surface markings need steady air and 150× or more.",
+  Jupiter: "Cloud belts and four moons at 100× in the ETX. The Seestar's planet mode can capture the belts.",
+  Saturn: "The rings are clear at 60×; Titan sits nearby. In 2026 the rings are tilted only a few degrees, so they look thin.",
+  Uranus: "A tiny blue-green disk at high power.",
+  Neptune: "A faint blue dot. Use the Seestar to confirm it by its motion over a few nights.",
+};
+const KIND_LABEL = { galaxy: "Galaxy", emission: "Emission nebula", reflection: "Reflection nebula", planetary: "Planetary nebula",
+  snr: "Supernova remnant", open: "Open cluster", globular: "Globular cluster", double: "Double star", planet: "Planet", moon: "Moon" };
+const FAMILY = { galaxy: "galaxy", emission: "nebula", reflection: "nebula", planetary: "nebula", snr: "nebula", open: "cluster", globular: "cluster", double: "double", planet: "planet", moon: "planet" };
+
+/* Which scope suits the object: returns {seestar: 0..2, etx: 0..2} (2 = great, 1 = OK, 0 = poor) */
+function scopeFit(o) {
+  switch (o.kind) {
+    case "planet": return { seestar: o.id === "Jupiter" || o.id === "Saturn" ? 1 : 0, etx: o.id === "Neptune" ? 1 : 2 };
+    case "moon": return { seestar: 2, etx: 2 };
+    case "double": return { seestar: 0, etx: 2 };
+    case "galaxy": return { seestar: 2, etx: o.mag <= 7 ? 1 : 0 };
+    case "emission": case "snr": case "reflection": return { seestar: 2, etx: o.id === "M42" ? 2 : (o.mag <= 7 && o.size < 40 ? 1 : 0) };
+    case "planetary": return { seestar: o.size >= 3 ? 2 : 1, etx: o.mag <= 9.5 ? 2 : 1 };
+    case "open": return { seestar: o.size >= 15 && o.size < 300 ? 2 : (o.size >= 300 ? 0 : 1), etx: o.size <= 50 ? 2 : 1 };
+    case "globular": return { seestar: 2, etx: o.mag <= 7 ? 2 : 1 };
+  }
+  return { seestar: 1, etx: 1 };
+}
+function seestarTip(o) {
+  if (o.kind === "emission" || o.kind === "snr") return "Seestar: turn on the light-pollution filter" + (o.size > 75 ? " and use mosaic mode" : "") + ".";
+  if (o.kind === "galaxy") return "Seestar: stack at least 30 minutes" + (o.size > 75 ? "; mosaic for the full size" : "") + ".";
+  if (o.kind === "open" && o.size > 75) return "Seestar: bigger than one frame; try mosaic mode.";
+  return "";
+}
+function etxTip(o) {
+  if (o.kind === "double") return "ETX: start with the 26 mm eyepiece, then go to higher power.";
+  if (o.kind === "globular") return "ETX: start at low power, then push higher to resolve stars.";
+  if (o.kind === "planetary") return "ETX: use high power; a narrowband or UHC filter helps.";
+  return "";
+}
+
+/* ---------------- Time helpers ---------------- */
+const tz = () => cfg.tz;
+function fmtTime(d) { return d ? d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: tz() }) : "—"; }
+function fmtDay(d) { return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: tz() }); }
+function fmtDayTime(d) { return d ? fmtDay(d) + ", " + fmtTime(d) : "—"; }
+function fmtHour(d) { return d.toLocaleTimeString("en-US", { hour: "numeric", timeZone: tz() }).replace(" ", "").toLowerCase(); }
+function dStr(t) { return t ? t.date : null; }
+const MIN = 60000, HOUR = 3600000, DAY = 86400000;
+
+/* ---------------- Astronomy ---------------- */
+const COMPASS = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+function compass(az) { return COMPASS[Math.round(((az % 360) + 360) % 360 / 22.5) % 16]; }
+
+function sunAlt(date) {
+  const eq = A.Equator(A.Body.Sun, date, observer, true, true);
+  return A.Horizon(date, observer, eq.ra, eq.dec, "normal").altitude;
+}
+function skyState(alt) {
+  if (alt > -0.833) return { label: "Daylight", cls: "bad" };
+  if (alt > -6) return { label: "Civil twilight", cls: "bad" };
+  if (alt > -12) return { label: "Nautical twilight", cls: "warn" };
+  if (alt > -18) return { label: "Astronomical twilight", cls: "warn" };
+  return { label: "Fully dark", cls: "good" };
+}
+
+/* Night window that contains (or follows) the given instant */
+function nightFor(date) {
+  const up = sunAlt(date) > -0.833;
+  const from = up ? date : new Date(date.getTime() - DAY);
+  const sunset = A.SearchRiseSet(A.Body.Sun, observer, -1, from, 2);
+  if (!sunset) return null;
+  const sunrise = A.SearchRiseSet(A.Body.Sun, observer, +1, sunset, 2);
+  const dusk = A.SearchAltitude(A.Body.Sun, observer, -1, sunset, 1, -18);
+  const dawn = A.SearchAltitude(A.Body.Sun, observer, +1, sunset, 1, -18);
+  return { sunset: sunset.date, sunrise: sunrise ? sunrise.date : new Date(sunset.date.getTime() + 12 * HOUR),
+    dusk: dusk ? dusk.date : null, dawn: dawn ? dawn.date : null };
+}
+
+function bodyHor(name, date) {
+  const eq = A.Equator(A.Body[name], date, observer, true, true);
+  const h = A.Horizon(date, observer, eq.ra, eq.dec, "normal");
+  return { alt: h.altitude, az: h.azimuth, dist: eq.dist };
+}
+function catalogHor(date) {
+  const rot = A.Rotation_EQJ_HOR(date, observer);
+  const t = A.MakeTime(date);
+  return CATALOG.map(function (o) {
+    const hv = A.RotateVector(rot, new A.Vector(o.v.x, o.v.y, o.v.z, t));
+    const s = A.HorizonFromVector(hv, "normal");
+    return { alt: s.lat, az: s.lon };
+  });
+}
+function sep(a1, z1, a2, z2) {
+  const r = Math.PI / 180;
+  const c = Math.sin(a1 * r) * Math.sin(a2 * r) + Math.cos(a1 * r) * Math.cos(a2 * r) * Math.cos((z1 - z2) * r);
+  return Math.acos(Math.max(-1, Math.min(1, c))) / r;
+}
+function inView(az) {
+  if (ui.whole) return true;
+  const lo = cfg.azMin, hi = cfg.azMax;
+  return lo <= hi ? (az >= lo && az <= hi) : (az >= lo || az <= hi);
+}
+
+/* All objects (planets, moon, catalog) at one instant */
+function snapshot(date) {
+  const list = [];
+  const moon = bodyHor("Moon", date);
+  const illum = A.Illumination(A.Body.Moon, date);
+  list.push({ id: "Moon", name: "Moon", kind: "moon", mag: illum.mag, size: 31, alt: moon.alt, az: moon.az, note: "" });
+  PLANETS.forEach(function (p) {
+    const h = bodyHor(p, date);
+    list.push({ id: p, name: p, kind: "planet", mag: A.Illumination(A.Body[p], date).mag, size: 0, alt: h.alt, az: h.az, note: PLANET_NOTES[p] });
+  });
+  const hor = catalogHor(date);
+  CATALOG.forEach(function (o, i) { list.push(Object.assign({}, o, hor[i])); });
+  const mIllum = illum.phase_fraction;
+  list.forEach(function (o) {
+    o.fit = scopeFit(o);
+    o.moonSep = o.kind === "moon" ? 0 : sep(o.alt, o.az, moon.alt, moon.az);
+    o.moonImpact = moonImpact(o, moon.alt, mIllum);
+  });
+  return { date: date, moon: moon, moonFrac: mIllum, objs: list };
+}
+function moonImpact(o, moonAltDeg, frac) {
+  if (o.kind === "planet" || o.kind === "moon" || o.kind === "double") return null;
+  if (moonAltDeg < -2) return { level: "none", label: "Moon down", cls: "good" };
+  const d = o.moonSep;
+  let f = frac * (d < 25 ? 1 : d < 50 ? 0.7 : d < 90 ? 0.5 : 0.35);
+  if (o.kind === "emission" || o.kind === "snr") f *= 0.5; // LP / dual-band filter helps
+  if (o.kind === "open" || o.kind === "globular") f *= 0.6;
+  if (f < 0.12) return { level: "low", label: "Moon: little effect", cls: "good" };
+  if (f < 0.35) return { level: "mid", label: "Moon: some glare", cls: "warn" };
+  return { level: "high", label: "Moon: washes it out", cls: "bad" };
+}
+
+/* Tonight sampling, for best times and "rising later" */
+function sampleNight(night) {
+  const start = night.dusk || new Date(night.sunset.getTime() + 75 * MIN);
+  const end = night.dawn || new Date(night.sunrise.getTime() - 75 * MIN);
+  const samples = [];
+  for (let t = start.getTime(); t <= end.getTime(); t += 15 * MIN) {
+    const d = new Date(t);
+    const hor = catalogHor(d);
+    const pl = {};
+    PLANETS.concat(["Moon"]).forEach(function (p) { pl[p] = bodyHor(p, d); });
+    samples.push({ d: d, hor: hor, pl: pl });
+  }
+  return samples;
+}
+function trackFor(id, samples) {
+  const idx = CATALOG.findIndex(function (o) { return o.id === id; });
+  return samples.map(function (s) {
+    const h = idx >= 0 ? s.hor[idx] : s.pl[id];
+    return { d: s.d, alt: h.alt, az: h.az };
+  });
+}
+function summarizeTrack(track) {
+  let best = null, enter = null, leave = null;
+  track.forEach(function (p) {
+    if (!best || p.alt > best.alt) best = p;
+    const ok = p.alt >= cfg.minAlt && inView(p.az);
+    if (ok && !enter) enter = p;
+    if (ok) leave = p;
+  });
+  return { best: best, enter: enter, leave: leave };
+}
+
+/* Moon-free darkness window */
+function moonFreeWindow(samples) {
+  let s = null, e = null, total = 0;
+  samples.forEach(function (p) {
+    if (p.pl.Moon.alt < -1) { if (!s) s = p.d; e = p.d; total += 15; }
+  });
+  return { start: s, end: e, minutes: total };
+}
+
+/* ---------------- State ---------------- */
+let night = null, samples = [], current = null, viewDate = new Date(), followNow = true, picked = null, drawn = [];
+
+function computeNight(ref) {
+  night = nightFor(ref);
+  samples = night ? sampleNight(night) : [];
+  setupScrubber();
+}
+function setupScrubber() {
+  const s = document.getElementById("scrub");
+  const span = (night.sunrise - night.sunset) / (10 * MIN);
+  s.max = Math.round(span);
+  const ticks = document.getElementById("scrubTicks");
+  ticks.innerHTML = "";
+  for (let i = 0; i <= 4; i++) {
+    const d = new Date(night.sunset.getTime() + (night.sunrise - night.sunset) * i / 4);
+    const el = document.createElement("span"); el.textContent = fmtTime(d); ticks.appendChild(el);
+  }
+}
+function syncScrubber() {
+  const s = document.getElementById("scrub");
+  const v = Math.round((viewDate - night.sunset) / (10 * MIN));
+  s.value = Math.max(0, Math.min(+s.max, v));
+  document.getElementById("scrubWhen").textContent = fmtTime(viewDate);
+}
+
+/* ---------------- Rendering ---------------- */
+const $ = function (id) { return document.getElementById(id); };
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+function renderAll() {
+  current = snapshot(viewDate);
+  renderStatus();
+  renderMoon();
+  drawSky();
+  renderTargets();
+  renderPicks();
+  renderLater();
+  renderWeatherWindow();
+  syncScrubber();
+}
+
+function renderStatus() {
+  const nowish = Math.abs(viewDate - Date.now()) < 2 * MIN;
+  $("stWhen").textContent = (nowish ? "Now · " : "") + fmtDayTime(viewDate);
+  const st = skyState(sunAlt(viewDate));
+  const p = $("stSky"); p.textContent = st.label; p.className = "pill " + st.cls;
+  $("stSunset").textContent = fmtTime(night.sunset);
+  $("stDusk").textContent = night.dusk ? fmtTime(night.dusk) : "no full dark";
+  $("stDawn").textContent = night.dawn ? fmtTime(night.dawn) : "—";
+  $("stSunrise").textContent = fmtTime(night.sunrise);
+  const mf = moonFreeWindow(samples);
+  $("stMoonFree").textContent = mf.minutes < 15 ? "none tonight" :
+    (mf.minutes >= samples.length * 15 - 15 ? "all night" : fmtTime(mf.start) + "–" + fmtTime(new Date(mf.end.getTime() + 15 * MIN)));
+  $("btnNow").setAttribute("aria-pressed", String(followNow));
+}
+
+function phaseName(p) {
+  if (p < 7 || p > 353) return "New moon";
+  if (p < 83) return "Waxing crescent";
+  if (p < 97) return "First quarter";
+  if (p < 173) return "Waxing gibbous";
+  if (p < 187) return "Full moon";
+  if (p < 263) return "Waning gibbous";
+  if (p < 277) return "Last quarter";
+  return "Waning crescent";
+}
+function nextEvent(fn) { try { const r = fn(); return r ? r.date : null; } catch (e) { return null; } }
+
+function renderMoon() {
+  const d = viewDate;
+  const phase = A.MoonPhase(d);
+  const frac = current.moonFrac;
+  const m = current.moon;
+  $("moonPill").textContent = phaseName(phase);
+  $("mIllum").textContent = Math.round(frac * 100) + "%";
+  $("mAge").textContent = (phase / 360 * 29.53).toFixed(1) + " days";
+  $("mPos").textContent = m.alt < -0.5 ? "below horizon" : Math.round(m.alt) + "° up, " + compass(m.az);
+  $("mDist").textContent = Math.round(m.dist * 149597870.7).toLocaleString("en-US") + " km";
+  // If the Moon is up, show when it rose; otherwise when it next rises
+  let rise = nextEvent(function () { return A.SearchRiseSet(A.Body.Moon, observer, +1, d, 2); });
+  if (m.alt > -0.5) {
+    let r = nextEvent(function () { return A.SearchRiseSet(A.Body.Moon, observer, +1, new Date(d.getTime() - 26 * HOUR), 1.1); });
+    while (r) {
+      const r2 = nextEvent(function () { return A.SearchRiseSet(A.Body.Moon, observer, +1, new Date(r.getTime() + HOUR), 1.1); });
+      if (r2 && r2 < d) r = r2; else break;
+    }
+    if (r && r < d) rise = r;
+  }
+  const set = nextEvent(function () { return A.SearchRiseSet(A.Body.Moon, observer, -1, d, 2); });
+  $("mRise").textContent = rise ? fmtDayTime(rise) : "—";
+  $("mRiseK").textContent = rise && rise < d ? "Rose" : "Rises";
+  $("mSet").textContent = set ? fmtDayTime(set) : "—";
+  $("mFull").textContent = fmtDay(nextEvent(function () { return A.SearchMoonPhase(180, d, 40); }));
+  $("mNew").textContent = fmtDay(nextEvent(function () { return A.SearchMoonPhase(0, d, 40); }));
+  let note;
+  if (frac < 0.25) note = "<strong>Dark-sky time.</strong> A thin or absent moon is best for galaxies and faint nebulae in the Seestar.";
+  else if (frac < 0.6) note = "<strong>Good for the ETX.</strong> Craters along the terminator (the shadow line) show strong relief right now. The Seestar should stick to emission nebulae with the filter, or targets far from the Moon.";
+  else note = "<strong>Bright moon.</strong> Spend the night on planets, double stars and clusters in the ETX, or emission nebulae with the Seestar's light-pollution filter. Galaxies will look washed out.";
+  if (phase > 180 && frac > 0.15 && m.alt < 0 && rise) note += " It rises at " + fmtTime(rise) + ", so image faint targets before then.";
+  $("moonNote").innerHTML = note;
+  drawMoon(phase, frac);
+}
+function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function drawMoon(phase, frac) {
+  const c = $("moonCanvas"), g = c.getContext("2d");
+  const W = c.width, r = W * 0.44, cx = W / 2, cy = W / 2;
+  g.clearRect(0, 0, W, W);
+  const lit = ui.red ? cssVar("--ink") : "#ece6d6", dark = ui.red ? "#1c0404" : "#1a2238";
+  g.fillStyle = dark; g.beginPath(); g.arc(cx, cy, r, 0, 2 * Math.PI); g.fill();
+  const waxing = phase < 180;
+  const cosp = Math.cos(phase * Math.PI / 180);
+  g.fillStyle = lit;
+  g.beginPath();
+  // lit half (right when waxing, left when waning, as seen from the northern hemisphere)
+  g.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2, !waxing);
+  g.closePath(); g.fill();
+  g.beginPath();
+  g.ellipse(cx, cy, Math.abs(cosp) * r, r, 0, 0, 2 * Math.PI);
+  g.fillStyle = cosp > 0 ? dark : lit;
+  g.fill();
+  g.strokeStyle = ui.red ? "#3a0a0a" : "rgba(255,255,255,0.18)"; g.lineWidth = 2;
+  g.beginPath(); g.arc(cx, cy, r, 0, 2 * Math.PI); g.stroke();
+}
+
+/* Sky panorama */
+function drawSky() {
+  const c = $("sky");
+  const cssW = c.clientWidth || 700;
+  const cssH = Math.round(Math.max(240, Math.min(460, cssW * 0.48)));
+  const dpr = window.devicePixelRatio || 1;
+  c.width = Math.round(cssW * dpr); c.height = Math.round(cssH * dpr); c.style.height = cssH + "px";
+  const g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const padL = 30, padR = 10, padT = 10, padB = 28;
+  const W = cssW - padL - padR, H = cssH - padT - padB;
+  const az0 = ui.view === "east" ? 0 : 180;
+  const X = function (az) { let a = ((az - az0) % 360 + 360) % 360; return padL + a / 180 * W; };
+  const Y = function (alt) { return padT + (1 - alt / 90) * H; };
+  const onScreen = function (az) { const a = ((az - az0) % 360 + 360) % 360; return a <= 180; };
+
+  // Sky gradient tinted by the sun
+  const sAlt = sunAlt(viewDate);
+  const grad = g.createLinearGradient(0, padT, 0, padT + H);
+  const hi = cssVar("--sky-hi"), lo = cssVar("--sky-lo");
+  grad.addColorStop(0, hi);
+  grad.addColorStop(1, sAlt > -12 && !ui.red ? "#3a4a7a" : lo);
+  g.fillStyle = grad; g.fillRect(padL, padT, W, H);
+
+  // Clear-view band
+  if (!ui.whole) {
+    g.fillStyle = ui.red ? "rgba(255,60,40,0.06)" : "rgba(240,179,91,0.07)";
+    if (onScreen(cfg.azMin) || onScreen(cfg.azMax)) {
+      const x1 = onScreen(cfg.azMin) ? X(cfg.azMin) : padL, x2 = onScreen(cfg.azMax) ? X(cfg.azMax) : padL + W;
+      g.fillRect(Math.min(x1, x2), padT, Math.abs(x2 - x1), H);
+    }
+  }
+
+  // Grid
+  const muted = cssVar("--faint"), ink = cssVar("--ink");
+  g.strokeStyle = cssVar("--line"); g.lineWidth = 1; g.font = "11px " + cssVar("--font-data"); g.fillStyle = muted;
+  [15, 30, 45, 60, 75].forEach(function (a) {
+    g.beginPath(); g.moveTo(padL, Y(a)); g.lineTo(padL + W, Y(a)); g.stroke();
+    g.fillText(a + "°", 2, Y(a) + 4);
+  });
+  g.strokeStyle = cssVar("--line"); g.setLineDash([2, 4]);
+  for (let i = 0; i <= 180; i += 45) { g.beginPath(); g.moveTo(padL + i / 180 * W, padT); g.lineTo(padL + i / 180 * W, padT + H); g.stroke(); }
+  g.setLineDash([]);
+
+  // Min altitude line
+  g.strokeStyle = cssVar("--warn"); g.globalAlpha = 0.35; g.beginPath(); g.moveTo(padL, Y(cfg.minAlt)); g.lineTo(padL + W, Y(cfg.minAlt)); g.stroke(); g.globalAlpha = 1;
+
+  // Ecliptic
+  const rot = A.Rotation_ECL_HOR(viewDate, observer);
+  const t = A.MakeTime(viewDate);
+  g.strokeStyle = cssVar("--ecl"); g.globalAlpha = 0.6; g.setLineDash([5, 5]); g.lineWidth = 1.2;
+  let prev = null;
+  for (let lon = 0; lon <= 360; lon += 2) {
+    const v = A.VectorFromSphere(new A.Spherical(0, lon, 1), t);
+    const s = A.HorizonFromVector(A.RotateVector(rot, v), null);
+    const pt = (s.lat >= 0 && onScreen(s.lon)) ? [X(s.lon), Y(s.lat)] : null;
+    if (pt && prev && Math.abs(pt[0] - prev[0]) < W / 3) { g.beginPath(); g.moveTo(prev[0], prev[1]); g.lineTo(pt[0], pt[1]); g.stroke(); }
+    prev = pt;
+  }
+  g.setLineDash([]); g.globalAlpha = 1; g.lineWidth = 1;
+
+  // Ground + compass labels
+  g.fillStyle = cssVar("--ground"); g.fillRect(padL, padT + H, W, padB);
+  g.fillStyle = ink; g.font = "600 12px " + cssVar("--font-body"); g.textAlign = "center";
+  const labels = ui.view === "east" ? ["N", "NE", "E", "SE", "S"] : ["S", "SW", "W", "NW", "N"];
+  labels.forEach(function (l, i) { g.fillText(l, padL + i / 4 * W, padT + H + 18); });
+  g.textAlign = "left";
+
+  // Objects
+  drawn = [];
+  const objs = current.objs.filter(function (o) { return o.alt > -1 && onScreen(o.az); });
+  objs.sort(function (a, b) { return b.mag - a.mag; });
+  const labelled = [];
+  objs.forEach(function (o) {
+    const x = X(o.az), y = Y(Math.max(0, o.alt));
+    let col, r;
+    if (o.kind === "moon") { col = ui.red ? cssVar("--ink") : "#ece6d6"; r = 9; }
+    else if (o.kind === "planet") { col = cssVar("--planet"); r = Math.max(2.5, Math.min(6, 5 - o.mag * 0.6)); }
+    else if (o.kind === "double") { col = cssVar("--dbl"); r = 2.6; }
+    else { col = cssVar("--dso"); r = o.mag < 6 ? 3.4 : 2.4; }
+    g.globalAlpha = (o.alt < cfg.minAlt || !inView(o.az)) && o.kind !== "moon" && o.kind !== "planet" ? 0.45 : 1;
+    g.fillStyle = col; g.strokeStyle = col;
+    if (o.kind === "galaxy") { g.beginPath(); g.ellipse(x, y, r + 1.5, r * 0.6, -0.5, 0, 2 * Math.PI); g.fill(); }
+    else if (o.kind === "open" || o.kind === "globular") { g.lineWidth = 1.4; g.beginPath(); g.arc(x, y, r + 0.5, 0, 2 * Math.PI); g.stroke(); g.lineWidth = 1; }
+    else if (FAMILY[o.kind] === "nebula") { g.fillRect(x - r, y - r, r * 2, r * 2); }
+    else { g.beginPath(); g.arc(x, y, r, 0, 2 * Math.PI); g.fill(); }
+    if (picked === o.id) { g.strokeStyle = cssVar("--accent"); g.lineWidth = 2; g.beginPath(); g.arc(x, y, r + 6, 0, 2 * Math.PI); g.stroke(); g.lineWidth = 1; }
+    g.globalAlpha = 1;
+    drawn.push({ id: o.id, x: x, y: y });
+    const wantLabel = o.kind === "planet" || o.kind === "moon" || picked === o.id || (o.mag < 4.6 && o.kind !== "double");
+    if (wantLabel) labelled.push({ o: o, x: x, y: y, r: r, col: col });
+  });
+  g.font = "12px " + cssVar("--font-body");
+  const boxes = [];
+  labelled.reverse().forEach(function (L) {
+    const text = L.o.kind === "moon" || L.o.kind === "planet" ? L.o.name : L.o.id;
+    const w = g.measureText(text).width;
+    let lx = L.x + L.r + 4, ly = L.y + 4;
+    if (lx + w > padL + W) lx = L.x - L.r - 4 - w;
+    const box = [lx, ly - 11, w, 13];
+    if (boxes.some(function (b) { return !(box[0] > b[0] + b[2] || box[0] + box[2] < b[0] || box[1] > b[1] + b[3] || box[1] + box[3] < b[1]); })) return;
+    boxes.push(box);
+    g.fillStyle = L.o.kind === "planet" || L.o.kind === "moon" ? L.col : cssVar("--muted");
+    g.fillText(text, lx, ly);
+  });
+}
+
+function skyClick(ev) {
+  const c = $("sky"), rect = c.getBoundingClientRect();
+  const x = ev.clientX - rect.left, y = ev.clientY - rect.top;
+  let best = null, bd = 18 * 18;
+  drawn.forEach(function (p) { const d = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y); if (d < bd) { bd = d; best = p; } });
+  picked = best ? best.id : null;
+  const o = best ? current.objs.find(function (q) { return q.id === best.id; }) : null;
+  $("picked").innerHTML = o ? describeShort(o) : "Tap a dot to see what it is.";
+  drawSky();
+  document.querySelectorAll(".t-card").forEach(function (el) { el.classList.toggle("sel", el.dataset.id === picked); });
+}
+function describeShort(o) {
+  return "<strong>" + esc(o.name) + "</strong> · " + KIND_LABEL[o.kind] + " · " + posText(o) +
+    (o.mag != null && o.kind !== "moon" ? " · mag " + o.mag.toFixed(1) : "");
+}
+function posText(o) { return o.alt < 0 ? "below horizon, " + compass(o.az) : Math.round(o.alt) + "° up, " + compass(o.az) + " (" + Math.round(o.az) + "°)"; }
+
+/* Targets */
+function passesFilter(o) {
+  const f = ui.filter;
+  if (f === "all") return true;
+  if (f === "seestar") return o.fit.seestar === 2;
+  if (f === "etx") return o.fit.etx === 2;
+  return FAMILY[o.kind] === f;
+}
+function trend(o) {
+  const later = snapshotOne(o, new Date(viewDate.getTime() + 20 * MIN));
+  return later > o.alt + 0.2 ? "rising" : later < o.alt - 0.2 ? "sinking" : "near its highest";
+}
+function snapshotOne(o, date) {
+  if (o.kind === "planet" || o.kind === "moon") return bodyHor(o.id, date).alt;
+  const rot = A.Rotation_EQJ_HOR(date, observer);
+  const hv = A.RotateVector(rot, new A.Vector(o.v.x, o.v.y, o.v.z, A.MakeTime(date)));
+  return A.HorizonFromVector(hv, "normal").lat;
+}
+function interest(o) {
+  let s = 0;
+  if (o.kind === "moon") s += 40;
+  if (o.kind === "planet") s += 60 - o.mag * 4;
+  s += (8 - Math.min(o.mag, 11)) * 3;
+  s += Math.min(o.alt, 60) / 3;
+  if (o.moonImpact && o.moonImpact.level === "high") s -= 12;
+  if (o.moonImpact && o.moonImpact.level === "mid") s -= 5;
+  if (o.note) s += 3;
+  return s;
+}
+function visibleNow() {
+  return current.objs.filter(function (o) { return o.alt >= cfg.minAlt && inView(o.az); });
+}
+function scopeChips(o) {
+  let h = "";
+  if (o.fit.seestar) h += '<span class="chip scope' + (o.fit.seestar === 2 ? " star" : "") + '">Seestar' + (o.fit.seestar === 2 ? " ★" : "") + "</span>";
+  if (o.fit.etx) h += '<span class="chip scope' + (o.fit.etx === 2 ? " star" : "") + '">ETX' + (o.fit.etx === 2 ? " ★" : "") + "</span>";
+  if (!o.fit.seestar && !o.fit.etx) h += '<span class="chip">Binoculars</span>';
+  return h;
+}
+function bestTimeChip(o) {
+  if (!samples.length) return "";
+  const s = summarizeTrack(trackFor(o.id, samples));
+  if (!s.best) return "";
+  return '<span class="chip">Highest ' + Math.round(s.best.alt) + "° at " + fmtTime(s.best.d) + "</span>";
+}
+function renderTargets() {
+  $("listTitle").textContent = ui.whole ? "Up in the sky" : "Up in your clear view";
+  const list = visibleNow().filter(passesFilter).sort(function (a, b) { return interest(b) - interest(a); });
+  $("listCount").textContent = list.length + (list.length === 1 ? " object" : " objects") + " above " + cfg.minAlt + "°";
+  const box = $("targets");
+  if (!list.length) {
+    box.innerHTML = '<p class="empty">Nothing matching this filter is above ' + cfg.minAlt + "° in your view at " + fmtTime(viewDate) +
+      ". Slide the time later, switch filters, or turn on Whole sky.</p>";
+    return;
+  }
+  box.innerHTML = list.slice(0, 60).map(function (o) {
+    const mi = o.moonImpact ? '<span class="chip ' + o.moonImpact.cls + '">' + o.moonImpact.label + "</span>" : "";
+    const tips = [o.note, o.fit.seestar === 2 ? seestarTip(o) : "", o.fit.etx === 2 ? etxTip(o) : ""].filter(Boolean).join(" ");
+    const size = o.size ? (o.kind === "double" ? "" : " · " + (o.size >= 1 ? Math.round(o.size) + "′" : Math.round(o.size * 60) + "″")) : "";
+    const magTxt = o.kind === "moon" ? Math.round(current.moonFrac * 100) + "% lit" : "mag " + o.mag.toFixed(1);
+    return '<article class="t-card' + (picked === o.id ? " sel" : "") + '" data-id="' + esc(o.id) + '">' +
+      '<div class="t-top"><div><div class="t-name">' + esc(o.name) + "</div>" +
+      '<div class="t-type">' + KIND_LABEL[o.kind] + " · " + magTxt + size + "</div></div>" +
+      '<div class="t-pos">' + Math.round(o.alt) + "° " + compass(o.az) + "</div></div>" +
+      '<div class="t-chips">' + scopeChips(o) + mi + '<span class="chip">' + trend(o) + "</span>" + bestTimeChip(o) + "</div>" +
+      (tips ? '<div class="t-tip">' + esc(tips) + "</div>" : "") + "</article>";
+  }).join("");
+}
+
+function renderPicks() {
+  const vis = visibleNow();
+  const st = skyState(sunAlt(viewDate));
+  $("picksSub").textContent = "for " + fmtTime(viewDate) + (st.cls === "bad" ? " (still too bright for deep sky)" : "");
+  const planets = vis.filter(function (o) { return o.kind === "planet" && o.fit.etx === 2; }).sort(function (a, b) { return a.mag - b.mag; });
+  const etx = vis.filter(function (o) { return o.fit.etx === 2 && o.kind !== "planet" && o.kind !== "moon"; }).sort(function (a, b) { return interest(b) - interest(a); });
+  const see = vis.filter(function (o) { return o.fit.seestar === 2 && o.kind !== "moon" && o.kind !== "planet" && o.kind !== "double"; })
+    .sort(function (a, b) { return interest(b) - interest(a); });
+  const moonUp = current.moon.alt > cfg.minAlt && inView(current.moon.az);
+  const picks = [];
+  if (planets[0]) picks.push(["Planet for the ETX", planets[0], PLANET_NOTES[planets[0].id]]);
+  if (see[0]) picks.push(["Seestar target", see[0], seestarTip(see[0]) || see[0].note]);
+  if (etx[0]) picks.push(["ETX deep-sky or double", etx[0], etx[0].note || etxTip(etx[0])]);
+  if (moonUp && current.moonFrac > 0.08 && current.moonFrac < 0.97) picks.push(["The Moon", current.objs[0], "Craters along the terminator look sharpest right now."]);
+  if (see[1] && picks.length < 4) picks.push(["Another Seestar option", see[1], see[1].note || seestarTip(see[1])]);
+  $("picks").innerHTML = picks.length ? picks.map(function (p) {
+    return '<div class="pick"><span class="eyebrow">' + p[0] + '</span><strong>' + esc(p[1].name) + '</strong><span class="t-pos muted">' +
+      posText(p[1]) + "</span>" + (p[2] ? '<span class="note">' + esc(p[2]) + "</span>" : "") + "</div>";
+  }).join("") : '<p class="empty">Nothing good is up in your view at this moment. Try "Tonight at dark" or slide the time later.</p>';
+}
+
+function renderLater() {
+  const body = $("later");
+  if (!samples.length) { body.innerHTML = ""; return; }
+  const now = viewDate.getTime();
+  const rows = [];
+  const all = PLANETS.map(function (p) { return { id: p, name: p, kind: "planet", mag: -1 }; }).concat(CATALOG);
+  all.forEach(function (o) {
+    const s = summarizeTrack(trackFor(o.id, samples));
+    if (!s.enter || s.enter.d.getTime() <= now + 10 * MIN) return;
+    const full = o.kind === "planet" ? Object.assign({}, o, { mag: A.Illumination(A.Body[o.id], viewDate).mag }) : o;
+    rows.push({ o: full, s: s, fit: scopeFit(full) });
+  });
+  rows.sort(function (a, b) { return a.s.enter.d - b.s.enter.d; });
+  const top = rows.filter(function (r) { return r.o.kind === "planet" || r.o.mag <= 8.5 || r.o.note; }).slice(0, 18);
+  body.innerHTML = top.length ? top.map(function (r) {
+    const best = [r.fit.seestar === 2 ? "Seestar" : "", r.fit.etx === 2 ? "ETX" : ""].filter(Boolean).join(", ") || "Either";
+    return "<tr><td>" + esc(r.o.name) + '</td><td class="muted">' + KIND_LABEL[r.o.kind] + '</td><td class="num">' + fmtTime(r.s.enter.d) +
+      '</td><td class="num">' + Math.round(r.s.best.alt) + "° at " + fmtTime(r.s.best.d) + "</td><td>" + best + "</td></tr>";
+  }).join("") : '<tr><td colspan="5" class="muted">Nothing new rises into your view before dawn.</td></tr>';
+}
+
+/* Meteor showers: [name, peakMonth, peakDay, startM, startD, endM, endD, ZHR, raH, decDeg] */
+const SHOWERS = [
+  ["Quadrantids", 1, 3, 12, 28, 1, 12, 110, 15.33, 49.5],
+  ["Lyrids", 4, 22, 4, 14, 4, 30, 18, 18.07, 33.3],
+  ["Eta Aquariids", 5, 6, 4, 19, 5, 28, 50, 22.53, -1],
+  ["Southern Delta Aquariids", 7, 30, 7, 12, 8, 23, 25, 22.67, -16],
+  ["Perseids", 8, 12, 7, 17, 8, 24, 100, 3.2, 58],
+  ["Draconids", 10, 8, 10, 6, 10, 10, 10, 17.47, 54],
+  ["Orionids", 10, 21, 10, 2, 11, 7, 20, 6.33, 16],
+  ["Southern Taurids", 11, 5, 9, 10, 11, 20, 5, 2.27, 9],
+  ["Northern Taurids", 11, 12, 10, 20, 12, 10, 5, 3.87, 23],
+  ["Leonids", 11, 17, 11, 6, 11, 30, 15, 10.27, 21.6],
+  ["Geminids", 12, 14, 12, 4, 12, 20, 150, 7.47, 32.2],
+  ["Ursids", 12, 22, 12, 17, 12, 26, 10, 14.47, 75.3],
+];
+function localYMD(d) {
+  const p = new Intl.DateTimeFormat("en-US", { timeZone: tz(), year: "numeric", month: "numeric", day: "numeric" }).formatToParts(d);
+  const g = function (t) { return +p.find(function (x) { return x.type === t; }).value; };
+  return { y: g("year"), m: g("month"), d: g("day") };
+}
+function renderShowers() {
+  const today = localYMD(new Date());
+  const todayN = Date.UTC(today.y, today.m - 1, today.d);
+  const rows = [];
+  SHOWERS.forEach(function (s) {
+    [today.y - 1, today.y, today.y + 1].forEach(function (y) {
+      const startY = s[3] > s[5] ? y - 1 : y; // window crosses new year
+      const start = Date.UTC(startY, s[3] - 1, s[4]), end = Date.UTC(y, s[5] - 1, s[6]);
+      const peakY = s[1] < s[3] ? y : startY;
+      const peak = Date.UTC(peakY, s[1] - 1, s[2]);
+      if (end >= todayN && start <= todayN + 30 * DAY) rows.push({ s: s, peak: peak, start: start, end: end });
+    });
+  });
+  rows.sort(function (a, b) { return a.peak - b.peak; });
+  $("showers").innerHTML = rows.length ? rows.map(function (r) {
+    // radiant at 2 AM local on peak night: approx 10:00 UTC for Pacific time
+    const peakDate = new Date(r.peak + 10 * HOUR);
+    const h = A.Horizon(peakDate, observer, r.s[8], r.s[9], "normal");
+    const moonF = A.Illumination(A.Body.Moon, peakDate).phase_fraction;
+    const active = todayN >= r.start && todayN <= r.end;
+    const peakTxt = new Date(r.peak).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+    return "<tr><td>" + r.s[0] + (active ? ' <span class="pill good">active</span>' : "") + '</td><td class="num">' + peakTxt +
+      '</td><td class="num">~' + r.s[7] + "/hr</td><td>" + (h.altitude > 0 ? Math.round(h.altitude) + "° up, " + compass(h.azimuth) : "below horizon") +
+      '</td><td class="num">' + Math.round(moonF * 100) + "% lit</td></tr>";
+  }).join("") : '<tr><td colspan="5" class="muted">No major showers in the next 30 days.</td></tr>';
+}
+
+/* ---------------- Weather (Open-Meteo) ----------------
+   Works when the page runs from its own web address. Inside a sandboxed preview the request is
+   blocked, and the panel falls back to forecast links. */
+let wx = null, wxState = "loading";
+async function loadWeather() {
+  const url = "https://api.open-meteo.com/v1/forecast?latitude=" + cfg.lat + "&longitude=" + cfg.lon +
+    "&hourly=cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,visibility,relative_humidity_2m,dew_point_2m,temperature_2m,wind_speed_10m" +
+    "&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=UTC&timeformat=unixtime&forecast_days=3";
+  try {
+    const ctl = new AbortController();
+    const timer = setTimeout(function () { ctl.abort(); }, 9000);
+    const res = await fetch(url, { signal: ctl.signal });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const j = await res.json();
+    const h = j.hourly;
+    wx = h.time.map(function (t, i) {
+      return { d: new Date(t * 1000), cc: h.cloud_cover[i], lo: h.cloud_cover_low[i], mid: h.cloud_cover_mid[i], hi: h.cloud_cover_high[i],
+        vis: h.visibility[i], rh: h.relative_humidity_2m[i], dp: h.dew_point_2m[i], temp: h.temperature_2m[i], wind: h.wind_speed_10m[i] };
+    });
+    wxState = "ok";
+  } catch (e) {
+    wxState = "blocked";
+  }
+  renderWeatherWindow();
+}
+function renderWeatherWindow() {
+  const pill = $("wxPill"), body = $("wxBody");
+  if (wxState === "loading") return;
+  if (wxState === "blocked" || !wx) {
+    pill.textContent = "Forecast links"; pill.className = "pill info";
+    body.innerHTML = "The live forecast didn't load (you may be offline). Check one of these for tonight's cloud cover.";
+    return;
+  }
+  const hours = wx.filter(function (w) { return w.d >= new Date(night.sunset.getTime() - 30 * MIN) && w.d <= night.sunrise; });
+  if (!hours.length) { body.textContent = "No forecast hours for tonight yet."; return; }
+  const dark = hours.filter(function (w) { return (!night.dusk || w.d >= night.dusk) && (!night.dawn || w.d <= night.dawn); });
+  const avg = Math.round((dark.length ? dark : hours).reduce(function (s, w) { return s + w.cc; }, 0) / (dark.length || hours.length));
+  pill.textContent = avg < 20 ? "Mostly clear" : avg < 50 ? "Partly cloudy" : avg < 80 ? "Mostly cloudy" : "Overcast";
+  pill.className = "pill " + (avg < 20 ? "good" : avg < 50 ? "warn" : "bad");
+  // Clearest run of hours
+  let bestRun = null, run = null;
+  dark.forEach(function (w) {
+    if (w.cc <= 25) { run = run || { s: w.d, e: w.d, n: 0, sum: 0 }; run.e = w.d; run.n++; run.sum += w.cc; }
+    else run = null;
+    if (run && (!bestRun || run.n > bestRun.n)) bestRun = Object.assign({}, run);
+  });
+  const nowW = wx.reduce(function (a, b) { return Math.abs(b.d - viewDate) < Math.abs(a.d - viewDate) ? b : a; });
+  const spread = nowW.temp - nowW.dp;
+  let html = '<div class="hours">' + hours.map(function (w) {
+    return '<div class="hr' + (w.cc <= 20 ? " clear" : "") + '" title="Low ' + w.lo + "%, mid " + w.mid + "%, high " + w.hi + '%">' +
+      '<div class="bar"><span style="height:' + w.cc + '%"></span></div><span>' + w.cc + '%</span><span class="t">' + fmtHour(w.d) + "</span></div>";
+  }).join("") + "</div>";
+  html += '<div class="grid2" style="margin-top:8px">' +
+    '<div class="kv"><span class="k">At ' + fmtHour(nowW.d) + '</span><span class="v">' + nowW.cc + "% cloud (L" + nowW.lo + " M" + nowW.mid + " H" + nowW.hi + ")</span></div>" +
+    '<div class="kv"><span class="k">Temp / dew point</span><span class="v">' + Math.round(nowW.temp) + "° / " + Math.round(nowW.dp) + "°F</span></div>" +
+    '<div class="kv"><span class="k">Humidity</span><span class="v">' + nowW.rh + "%</span></div>" +
+    '<div class="kv"><span class="k">Wind</span><span class="v">' + Math.round(nowW.wind) + " mph</span></div></div>";
+  const notes = [];
+  if (bestRun) notes.push("Clearest stretch: <strong>" + fmtTime(bestRun.s) + "–" + fmtTime(new Date(bestRun.e.getTime() + HOUR)) + "</strong>.");
+  else notes.push("No clear stretch in the forecast during full dark.");
+  if (spread < 5) notes.push("Dew is likely (temperature within " + Math.round(spread) + "° of the dew point). Use a dew heater or a dew shield on the ETX.");
+  if (nowW.wind > 12) notes.push("Breezy. The Seestar is light, so shelter it from gusts.");
+  html += '<p class="note" style="margin:8px 0 0">' + notes.join(" ") + "</p>";
+  body.innerHTML = html;
+}
+
+/* ---------------- Controls ---------------- */
+function setView(date, follow) {
+  followNow = !!follow;
+  viewDate = date;
+  if (!night || date > night.sunrise || date < new Date(night.sunset.getTime() - 14 * HOUR)) computeNight(date);
+  renderAll();
+}
+function gotoNow() {
+  const now = new Date();
+  computeNight(now);
+  setView(now, true);
+}
+function gotoDark() {
+  const now = new Date();
+  computeNight(now);
+  const target = night.dusk && night.dusk > now ? night.dusk : now;
+  setView(target, target === now);
+}
+$("btnNow").addEventListener("click", gotoNow);
+$("btnDark").addEventListener("click", gotoDark);
+$("scrub").addEventListener("input", function (e) {
+  followNow = false;
+  viewDate = new Date(night.sunset.getTime() + (+e.target.value) * 10 * MIN);
+  renderAll();
+});
+document.querySelectorAll("[data-view]").forEach(function (b) {
+  b.addEventListener("click", function () {
+    ui.view = b.dataset.view; saveJSON("sky.ui", ui);
+    document.querySelectorAll("[data-view]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+    $("skyTitle").textContent = ui.view === "east" ? "Eastern sky" : "Western sky";
+    drawSky();
+  });
+});
+document.querySelectorAll("[data-f]").forEach(function (b) {
+  b.addEventListener("click", function () {
+    ui.filter = b.dataset.f; saveJSON("sky.ui", ui);
+    document.querySelectorAll("[data-f]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+    renderTargets();
+  });
+});
+$("btnWhole").addEventListener("click", function () {
+  ui.whole = !ui.whole; saveJSON("sky.ui", ui);
+  $("btnWhole").setAttribute("aria-pressed", String(ui.whole));
+  computeNight(viewDate); renderAll();
+});
+$("btnRed").addEventListener("click", function () {
+  ui.red = !ui.red; saveJSON("sky.ui", ui); applyRed(); renderAll();
+});
+function applyRed() {
+  if (ui.red) document.documentElement.setAttribute("data-night", "red"); else document.documentElement.removeAttribute("data-night");
+  $("btnRed").setAttribute("aria-pressed", String(ui.red));
+}
+$("sky").addEventListener("click", skyClick);
+$("targets").addEventListener("click", function (e) {
+  const card = e.target.closest(".t-card"); if (!card) return;
+  picked = card.dataset.id;
+  const o = current.objs.find(function (q) { return q.id === picked; });
+  if (o && o.az != null) {
+    const wantView = ((o.az % 360) + 360) % 360 <= 180 ? "east" : "west";
+    if (wantView !== ui.view) document.querySelector('[data-view="' + wantView + '"]').click();
+  }
+  $("picked").innerHTML = o ? describeShort(o) : "";
+  document.querySelectorAll(".t-card").forEach(function (el) { el.classList.toggle("sel", el.dataset.id === picked); });
+  drawSky();
+});
+
+// Settings form
+function fillSettings() {
+  $("sLat").value = cfg.lat; $("sLon").value = cfg.lon; $("sName").value = cfg.name;
+  $("sAzMin").value = cfg.azMin; $("sAzMax").value = cfg.azMax; $("sMinAlt").value = cfg.minAlt;
+}
+$("settingsForm").addEventListener("submit", function (e) {
+  e.preventDefault();
+  const n = function (id, d) { const v = parseFloat($(id).value); return isFinite(v) ? v : d; };
+  cfg.lat = n("sLat", cfg.lat); cfg.lon = n("sLon", cfg.lon); cfg.name = $("sName").value.trim() || cfg.name;
+  cfg.azMin = n("sAzMin", cfg.azMin); cfg.azMax = n("sAzMax", cfg.azMax); cfg.minAlt = n("sMinAlt", cfg.minAlt);
+  saveJSON("sky.cfg", cfg);
+  observer = new A.Observer(cfg.lat, cfg.lon, 40);
+  applyLocationLabels();
+  computeNight(viewDate); renderAll(); renderShowers(); loadWeather();
+  $("sSave").textContent = "Saved";
+  setTimeout(function () { $("sSave").textContent = "Save settings"; }, 1500);
+});
+function applyLocationLabels() {
+  const lat = Math.abs(cfg.lat).toFixed(2) + "° " + (cfg.lat >= 0 ? "N" : "S");
+  const lon = Math.abs(cfg.lon).toFixed(2) + "° " + (cfg.lon >= 0 ? "E" : "W");
+  $("locLabel").textContent = cfg.name + " · " + lat + " " + lon;
+  $("lnkClear").href = "https://clearoutside.com/forecast/" + cfg.lat.toFixed(2) + "/" + cfg.lon.toFixed(2);
+  $("lnkNws").href = "https://forecast.weather.gov/MapClick.php?lat=" + cfg.lat + "&lon=" + cfg.lon + "&FcstType=graphical";
+}
+
+/* ---------------- Boot ---------------- */
+function boot() {
+  if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(function () {});
+  applyRed();
+  applyLocationLabels();
+  fillSettings();
+  document.querySelectorAll("[data-view]").forEach(function (x) { x.setAttribute("aria-pressed", String(x.dataset.view === ui.view)); });
+  document.querySelectorAll("[data-f]").forEach(function (x) { x.setAttribute("aria-pressed", String(x.dataset.f === ui.filter)); });
+  $("btnWhole").setAttribute("aria-pressed", String(ui.whole));
+  $("skyTitle").textContent = ui.view === "east" ? "Eastern sky" : "Western sky";
+  const now = new Date();
+  computeNight(now);
+  // In daylight, open on tonight at full dark; at night, open on now.
+  if (sunAlt(now) > -6 && night.dusk && night.dusk > now) setView(night.dusk, false);
+  else setView(now, true);
+  renderShowers();
+  loadWeather();
+  setInterval(function () { if (followNow) { const n = new Date(); if (n > night.sunrise) computeNight(n); setView(n, true); } }, 60000);
+  let rt = null;
+  window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(drawSky, 120); });
+}
+if (!A) {
+  document.querySelector(".wrap").insertAdjacentHTML("afterbegin", '<p class="pill bad">The astronomy library did not load. Check your connection and reload.</p>');
+} else {
+  boot();
+}
+})();
+</script>
+
+</body>
+</html>
