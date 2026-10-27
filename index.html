@@ -48,6 +48,7 @@ img { max-width: 100%; }
   --dso: #9cc3ff;
   --dbl: #d7b6ff;
   --ecl: #f0b35b;
+  --comet: #8fe3c6;
   --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
   --font-body: "IBM Plex Sans", -apple-system, "Segoe UI", system-ui, sans-serif;
   --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -58,7 +59,7 @@ img { max-width: 100%; }
   --ink: #ff6b5a; --muted: #c2402f; --faint: #7a1f16; --accent: #ff3b2a; --accent-ink: #140000;
   --sky-hi: #100101; --sky-lo: #220404; --ground: #060000;
   --good: #ff6b5a; --warn: #e2402c; --bad: #a11f12;
-  --planet: #ff7a66; --dso: #e34a36; --dbl: #c9382a; --ecl: #8f2416;
+  --planet: #ff7a66; --dso: #e34a36; --dbl: #c9382a; --ecl: #8f2416; --comet: #ff8a70;
 }
 * { box-sizing: border-box; }
 body {
@@ -166,6 +167,11 @@ th { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color
 td.num { font-family: var(--font-data); white-space: nowrap; }
 .tablewrap { overflow-x: auto; }
 
+.planet-tips { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.planet-tips div { font-size: 0.84rem; color: var(--muted); border-left: 2px solid var(--planet); padding-left: 10px; }
+.planet-tips strong { color: var(--ink); }
+.jove { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
+#joveCanvas { width: 100%; height: 110px; display: block; background: var(--sky-hi); border-radius: 6px; }
 details.settings summary { cursor: pointer; font-weight: 600; }
 .form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 14px; margin-top: 12px; }
 .form label { display: grid; gap: 4px; font-size: 0.8rem; color: var(--muted); }
@@ -220,6 +226,7 @@ details.settings summary { cursor: pointer; font-weight: 600; }
         <span><i style="background:var(--planet)"></i>Planets</span>
         <span><i style="background:var(--dso)"></i>Deep sky</span>
         <span><i style="background:var(--dbl)"></i>Double stars</span>
+        <span><i style="background:var(--comet)"></i>Comets</span>
         <span><i style="background:var(--ecl);border-radius:0;height:2px;width:14px;vertical-align:3px"></i>Ecliptic</span>
         <span>Shaded band: your clear view</span>
       </div>
@@ -263,6 +270,29 @@ details.settings summary { cursor: pointer; font-weight: 600; }
     <div class="picks" id="picks"></div>
   </section>
 
+  <section class="panel" aria-label="Planet imaging">
+    <div class="panel-head"><h2>Planet imaging tonight</h2><span class="muted" style="font-size:.85rem">ETX at f/14 with a 2.9 µm ZWO camera ≈ 0.41″ per pixel</span></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Planet</th><th>Disk</th><th>Rises · Highest · Sets</th><th>Best window (above 30°)</th><th>Steadiness</th></tr></thead>
+      <tbody id="planetRows"></tbody>
+    </table></div>
+    <div class="planet-tips" id="planetTips"></div>
+    <div class="jove">
+      <div class="panel-head"><h3>Jupiter's moons at <span id="joveTime">—</span></h3><span class="muted" style="font-size:.8rem">North up, east left, as in the sky. Your eyepiece or camera view may be flipped.</span></div>
+      <canvas id="joveCanvas" aria-label="Positions of Jupiter's four large moons"></canvas>
+      <p class="note" id="joveEvents" style="margin:0"></p>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Comets">
+    <div class="panel-head"><h2>Comets within reach</h2><span class="muted" id="cometSub" style="font-size:.85rem"></span></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Comet</th><th>Est. mag</th><th>At this time</th><th>Highest tonight</th><th>From Earth · Sun</th><th>Best for</th></tr></thead>
+      <tbody id="cometRows"></tbody>
+    </table></div>
+    <p class="foot" style="margin:0">Comet brightness is a forecast from its orbit and often misses by a magnitude or two either way. The Seestar can usually record comets to about magnitude 12; the ETX shows them by eye to about magnitude 9.</p>
+  </section>
+
   <section class="panel" aria-label="Targets">
     <div class="panel-head">
       <h2 id="listTitle">Up in the east</h2>
@@ -277,6 +307,7 @@ details.settings summary { cursor: pointer; font-weight: 600; }
       <button class="btn" type="button" data-f="nebula" aria-pressed="false">Nebulae</button>
       <button class="btn" type="button" data-f="cluster" aria-pressed="false">Clusters</button>
       <button class="btn" type="button" data-f="double" aria-pressed="false">Double stars</button>
+      <button class="btn" type="button" data-f="comet" aria-pressed="false">Comets</button>
       <button class="btn" type="button" id="btnWhole" aria-pressed="false">Whole sky</button>
     </div>
     <div class="targets" id="targets"></div>
@@ -314,7 +345,7 @@ details.settings summary { cursor: pointer; font-weight: 600; }
     </details>
   </section>
 
-  <p class="foot">Positions are computed on your device with Astronomy Engine. Cloud forecast from Open-Meteo when this page can reach it. Seestar 50 field ≈ 1.3° × 0.7°; ETX 4″ assumes ~1,470 mm focal length (26 mm eyepiece ≈ 57×, ~0.9° field).</p>
+  <p class="foot">Positions are computed on your device with Astronomy Engine. Cloud and jet-stream forecast from Open-Meteo. Comet orbits from the Minor Planet Center, refreshed daily. Seestar 50 field ≈ 1.3° × 0.7°; ETX 4″ assumes ~1,470 mm focal length (26 mm eyepiece ≈ 57×, ~0.9° field).</p>
 </div>
 
 <script src="astronomy.browser.min.js"></script>
@@ -457,8 +488,8 @@ const PLANET_NOTES = {
   Neptune: "A faint blue dot. Use the Seestar to confirm it by its motion over a few nights.",
 };
 const KIND_LABEL = { galaxy: "Galaxy", emission: "Emission nebula", reflection: "Reflection nebula", planetary: "Planetary nebula",
-  snr: "Supernova remnant", open: "Open cluster", globular: "Globular cluster", double: "Double star", planet: "Planet", moon: "Moon" };
-const FAMILY = { galaxy: "galaxy", emission: "nebula", reflection: "nebula", planetary: "nebula", snr: "nebula", open: "cluster", globular: "cluster", double: "double", planet: "planet", moon: "planet" };
+  snr: "Supernova remnant", open: "Open cluster", globular: "Globular cluster", double: "Double star", planet: "Planet", moon: "Moon", comet: "Comet" };
+const FAMILY = { galaxy: "galaxy", emission: "nebula", reflection: "nebula", planetary: "nebula", snr: "nebula", open: "cluster", globular: "cluster", double: "double", planet: "planet", moon: "planet", comet: "comet" };
 
 /* Which scope suits the object: returns {seestar: 0..2, etx: 0..2} (2 = great, 1 = OK, 0 = poor) */
 function scopeFit(o) {
@@ -471,6 +502,7 @@ function scopeFit(o) {
     case "planetary": return { seestar: o.size >= 3 ? 2 : 1, etx: o.mag <= 9.5 ? 2 : 1 };
     case "open": return { seestar: o.size >= 15 && o.size < 300 ? 2 : (o.size >= 300 ? 0 : 1), etx: o.size <= 50 ? 2 : 1 };
     case "globular": return { seestar: 2, etx: o.mag <= 7 ? 2 : 1 };
+    case "comet": return { seestar: o.mag <= 12 ? 2 : o.mag <= 13.5 ? 1 : 0, etx: o.mag <= 9 ? 2 : o.mag <= 10.5 ? 1 : 0 };
   }
   return { seestar: 1, etx: 1 };
 }
@@ -478,12 +510,14 @@ function seestarTip(o) {
   if (o.kind === "emission" || o.kind === "snr") return "Seestar: turn on the light-pollution filter" + (o.size > 75 ? " and use mosaic mode" : "") + ".";
   if (o.kind === "galaxy") return "Seestar: stack at least 30 minutes" + (o.size > 75 ? "; mosaic for the full size" : "") + ".";
   if (o.kind === "open" && o.size > 75) return "Seestar: bigger than one frame; try mosaic mode.";
+  if (o.kind === "comet") return "Seestar: comets move against the stars, so keep each session to 20–30 minutes.";
   return "";
 }
 function etxTip(o) {
   if (o.kind === "double") return "ETX: start with the 26 mm eyepiece, then go to higher power.";
   if (o.kind === "globular") return "ETX: start at low power, then push higher to resolve stars.";
   if (o.kind === "planetary") return "ETX: use high power; a narrowband or UHC filter helps.";
+  if (o.kind === "comet") return "ETX: low power and averted vision show the coma best.";
   return "";
 }
 
@@ -562,6 +596,11 @@ function snapshot(date) {
   });
   const hor = catalogHor(date);
   CATALOG.forEach(function (o, i) { list.push(Object.assign({}, o, hor[i])); });
+  const cm = cometsAt(date);
+  COMETS.forEach(function (c) {
+    const h = cm[c.id];
+    list.push({ id: c.id, name: c.name, kind: "comet", mag: h.st.mag, size: 0, alt: h.alt, az: h.az, note: "", st: h.st });
+  });
   const mIllum = illum.phase_fraction;
   list.forEach(function (o) {
     o.fit = scopeFit(o);
@@ -592,14 +631,14 @@ function sampleNight(night) {
     const hor = catalogHor(d);
     const pl = {};
     PLANETS.concat(["Moon"]).forEach(function (p) { pl[p] = bodyHor(p, d); });
-    samples.push({ d: d, hor: hor, pl: pl });
+    samples.push({ d: d, hor: hor, pl: pl, cm: cometsAt(d) });
   }
   return samples;
 }
 function trackFor(id, samples) {
   const idx = CATALOG.findIndex(function (o) { return o.id === id; });
   return samples.map(function (s) {
-    const h = idx >= 0 ? s.hor[idx] : s.pl[id];
+    const h = idx >= 0 ? s.hor[idx] : (s.pl[id] || s.cm[id]);
     return { d: s.d, alt: h.alt, az: h.az };
   });
 }
@@ -621,6 +660,89 @@ function moonFreeWindow(samples) {
     if (p.pl.Moon.alt < -1) { if (!s) s = p.d; e = p.d; total += 15; }
   });
   return { start: s, end: e, minutes: total };
+}
+
+/* ---------------- Comets ----------------
+   Orbital elements come from comets.json, which a GitHub Action refreshes daily from the
+   Minor Planet Center. Positions use two-body orbits (fine for finding and framing). */
+const GAUSS_K = 0.01720209895, OBL = 23.4392911 * Math.PI / 180, DEG = Math.PI / 180;
+let COMETS = [], cometsUpdated = null, cometsState = "loading";
+function jdOf(date) { return date.getTime() / DAY + 2440587.5; }
+function bisect(f, lo, hi) { // f increasing on [lo, hi]
+  for (let k = 0; k < 64; k++) { const mid = (lo + hi) / 2; if (f(mid) > 0) hi = mid; else lo = mid; }
+  return (lo + hi) / 2;
+}
+function cometHelio(c, jd) { // heliocentric EQJ position, AU
+  const dt = jd - c.tp, q = c.q, e = c.e;
+  let x, y;
+  if (Math.abs(e - 1) < 1e-6) {
+    const W = 3 * GAUSS_K * dt / Math.sqrt(2 * q * q * q);
+    const Y = Math.cbrt(W / 2 + Math.sqrt(W * W / 4 + 1)), sv = Y - 1 / Y;
+    x = q * (1 - sv * sv); y = 2 * q * sv;
+  } else if (e < 1) {
+    const a = q / (1 - e), n = GAUSS_K / Math.pow(a, 1.5);
+    let M = (n * dt) % (2 * Math.PI); if (M > Math.PI) M -= 2 * Math.PI; if (M < -Math.PI) M += 2 * Math.PI;
+    const E = bisect(function (E) { return E - e * Math.sin(E) - M; }, -Math.PI, Math.PI);
+    x = a * (Math.cos(E) - e); y = a * Math.sqrt(1 - e * e) * Math.sin(E);
+  } else {
+    const a = q / (e - 1), n = GAUSS_K / Math.pow(a, 1.5), M = n * dt;
+    const f = function (H) { return e * Math.sinh(H) - H - M; };
+    let lo = -1, hi = 1; while (f(hi) < 0) hi *= 2; while (f(lo) > 0) lo *= 2;
+    const H = bisect(f, lo, hi);
+    x = a * (e - Math.cosh(H)); y = a * Math.sqrt(e * e - 1) * Math.sinh(H);
+  }
+  const w = c.w * DEG, O = c.node * DEG, i = c.i * DEG;
+  const cw = Math.cos(w), sw = Math.sin(w), cO = Math.cos(O), sO = Math.sin(O), ci = Math.cos(i), si = Math.sin(i);
+  const xe = x * (cw * cO - sw * sO * ci) + y * (-sw * cO - cw * sO * ci);
+  const ye = x * (cw * sO + sw * cO * ci) + y * (-sw * sO + cw * cO * ci);
+  const ze = x * (sw * si) + y * (cw * si);
+  return { x: xe, y: ye * Math.cos(OBL) - ze * Math.sin(OBL), z: ye * Math.sin(OBL) + ze * Math.cos(OBL) };
+}
+function cometState(c, date) {
+  const earth = A.HelioVector(A.Body.Earth, date);
+  const jd = jdOf(date) + 69.2 / 86400; // UTC -> TT
+  let p = cometHelio(c, jd), g, dist;
+  for (let k = 0; k < 2; k++) { // light-time correction
+    g = { x: p.x - earth.x, y: p.y - earth.y, z: p.z - earth.z };
+    dist = Math.hypot(g.x, g.y, g.z);
+    p = cometHelio(c, jd - dist / 173.1446);
+  }
+  g = { x: p.x - earth.x, y: p.y - earth.y, z: p.z - earth.z }; dist = Math.hypot(g.x, g.y, g.z);
+  const r = Math.hypot(p.x, p.y, p.z);
+  const mag = c.H == null ? 99 : c.H + 5 * Math.log10(dist) + 2.5 * c.K * Math.log10(r);
+  const se = Math.hypot(earth.x, earth.y, earth.z);
+  const cosEl = -(g.x * earth.x + g.y * earth.y + g.z * earth.z) / (dist * se);
+  return { g: g, r: r, delta: dist, mag: mag, elong: Math.acos(Math.max(-1, Math.min(1, cosEl))) / DEG };
+}
+function cometHor(st, rot, t) {
+  const s = A.HorizonFromVector(A.RotateVector(rot, new A.Vector(st.g.x, st.g.y, st.g.z, t)), "normal");
+  return { alt: s.lat, az: s.lon };
+}
+function cometsAt(date) {
+  const out = {};
+  if (!COMETS.length) return out;
+  const rot = A.Rotation_EQJ_HOR(date, observer), t = A.MakeTime(date);
+  COMETS.forEach(function (c) { const st = cometState(c, date); out[c.id] = Object.assign(cometHor(st, rot, t), { st: st }); });
+  return out;
+}
+async function loadComets() {
+  try {
+    const res = await fetch("comets.json", { cache: "no-cache" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const j = await res.json();
+    cometsUpdated = j.updated ? new Date(j.updated) : null;
+    const now = new Date();
+    COMETS = (j.comets || []).map(function (c) {
+      const st = cometState(c, now);
+      return Object.assign({ id: "comet:" + c.name }, c, { magNow: st.mag, elongNow: st.elong });
+    }).filter(function (c) { return c.magNow <= 14 && c.elongNow > 12; })
+      .sort(function (a, b) { return a.magNow - b.magNow; }).slice(0, 25);
+    cometsState = "ok";
+  } catch (e) {
+    cometsState = "none";
+  }
+  computeNight(viewDate);
+  renderAll();
 }
 
 /* ---------------- State ---------------- */
@@ -662,6 +784,8 @@ function renderAll() {
   renderPicks();
   renderLater();
   renderWeatherWindow();
+  renderPlanets();
+  renderComets();
   syncScrubber();
 }
 
@@ -765,6 +889,7 @@ function drawSky() {
 
   // Sky gradient tinted by the sun
   const sAlt = sunAlt(viewDate);
+  const sunHor = bodyHor("Sun", viewDate);
   const grad = g.createLinearGradient(0, padT, 0, padT + H);
   const hi = cssVar("--sky-hi"), lo = cssVar("--sky-lo");
   grad.addColorStop(0, hi);
@@ -826,23 +951,30 @@ function drawSky() {
     if (o.kind === "moon") { col = ui.red ? cssVar("--ink") : "#ece6d6"; r = 9; }
     else if (o.kind === "planet") { col = cssVar("--planet"); r = Math.max(2.5, Math.min(6, 5 - o.mag * 0.6)); }
     else if (o.kind === "double") { col = cssVar("--dbl"); r = 2.6; }
+    else if (o.kind === "comet") { col = cssVar("--comet"); r = 3; }
     else { col = cssVar("--dso"); r = o.mag < 6 ? 3.4 : 2.4; }
     g.globalAlpha = (o.alt < cfg.minAlt || !inView(o.az)) && o.kind !== "moon" && o.kind !== "planet" ? 0.45 : 1;
     g.fillStyle = col; g.strokeStyle = col;
     if (o.kind === "galaxy") { g.beginPath(); g.ellipse(x, y, r + 1.5, r * 0.6, -0.5, 0, 2 * Math.PI); g.fill(); }
     else if (o.kind === "open" || o.kind === "globular") { g.lineWidth = 1.4; g.beginPath(); g.arc(x, y, r + 0.5, 0, 2 * Math.PI); g.stroke(); g.lineWidth = 1; }
     else if (FAMILY[o.kind] === "nebula") { g.fillRect(x - r, y - r, r * 2, r * 2); }
+    else if (o.kind === "comet") {
+      // short tail pointing away from the Sun's place on the panorama
+      const sx = X(sunHor.az), sy = Y(sunHor.alt), dx = x - sx, dy = y - sy, dl = Math.hypot(dx, dy) || 1;
+      g.lineWidth = 2; g.beginPath(); g.moveTo(x, y); g.lineTo(x + dx / dl * 14, y + dy / dl * 14); g.stroke(); g.lineWidth = 1;
+      g.beginPath(); g.arc(x, y, r, 0, 2 * Math.PI); g.fill();
+    }
     else { g.beginPath(); g.arc(x, y, r, 0, 2 * Math.PI); g.fill(); }
     if (picked === o.id) { g.strokeStyle = cssVar("--accent"); g.lineWidth = 2; g.beginPath(); g.arc(x, y, r + 6, 0, 2 * Math.PI); g.stroke(); g.lineWidth = 1; }
     g.globalAlpha = 1;
     drawn.push({ id: o.id, x: x, y: y });
-    const wantLabel = o.kind === "planet" || o.kind === "moon" || picked === o.id || (o.mag < 4.6 && o.kind !== "double");
+    const wantLabel = o.kind === "planet" || o.kind === "moon" || picked === o.id || (o.kind === "comet" && o.mag < 11) || (o.mag < 4.6 && o.kind !== "double" && o.kind !== "comet");
     if (wantLabel) labelled.push({ o: o, x: x, y: y, r: r, col: col });
   });
   g.font = "12px " + cssVar("--font-body");
   const boxes = [];
   labelled.reverse().forEach(function (L) {
-    const text = L.o.kind === "moon" || L.o.kind === "planet" ? L.o.name : L.o.id;
+    const text = L.o.kind === "moon" || L.o.kind === "planet" ? L.o.name : L.o.kind === "comet" ? L.o.name.split(" (")[0] : L.o.id;
     const w = g.measureText(text).width;
     let lx = L.x + L.r + 4, ly = L.y + 4;
     if (lx + w > padL + W) lx = L.x - L.r - 4 - w;
@@ -885,6 +1017,7 @@ function trend(o) {
 }
 function snapshotOne(o, date) {
   if (o.kind === "planet" || o.kind === "moon") return bodyHor(o.id, date).alt;
+  if (o.kind === "comet") { const c = COMETS.find(function (x) { return x.id === o.id; }); return cometHor(cometState(c, date), A.Rotation_EQJ_HOR(date, observer), A.MakeTime(date)).alt; }
   const rot = A.Rotation_EQJ_HOR(date, observer);
   const hv = A.RotateVector(rot, new A.Vector(o.v.x, o.v.y, o.v.z, A.MakeTime(date)));
   return A.HorizonFromVector(hv, "normal").lat;
@@ -893,6 +1026,7 @@ function interest(o) {
   let s = 0;
   if (o.kind === "moon") s += 40;
   if (o.kind === "planet") s += 60 - o.mag * 4;
+  if (o.kind === "comet") s += o.mag < 10 ? 25 : 8;
   s += (8 - Math.min(o.mag, 11)) * 3;
   s += Math.min(o.alt, 60) / 3;
   if (o.moonImpact && o.moonImpact.level === "high") s -= 12;
@@ -966,7 +1100,8 @@ function renderLater() {
   if (!samples.length) { body.innerHTML = ""; return; }
   const now = viewDate.getTime();
   const rows = [];
-  const all = PLANETS.map(function (p) { return { id: p, name: p, kind: "planet", mag: -1 }; }).concat(CATALOG);
+  const all = PLANETS.map(function (p) { return { id: p, name: p, kind: "planet", mag: -1 }; }).concat(CATALOG)
+    .concat(COMETS.map(function (c) { return { id: c.id, name: c.name, kind: "comet", mag: c.magNow, note: "comet" }; }));
   all.forEach(function (o) {
     const s = summarizeTrack(trackFor(o.id, samples));
     if (!s.enter || s.enter.d.getTime() <= now + 10 * MIN) return;
@@ -974,7 +1109,7 @@ function renderLater() {
     rows.push({ o: full, s: s, fit: scopeFit(full) });
   });
   rows.sort(function (a, b) { return a.s.enter.d - b.s.enter.d; });
-  const top = rows.filter(function (r) { return r.o.kind === "planet" || r.o.mag <= 8.5 || r.o.note; }).slice(0, 18);
+  const top = rows.filter(function (r) { return r.o.kind === "planet" || r.o.kind === "comet" || r.o.mag <= 8.5 || r.o.note; }).slice(0, 18);
   body.innerHTML = top.length ? top.map(function (r) {
     const best = [r.fit.seestar === 2 ? "Seestar" : "", r.fit.etx === 2 ? "ETX" : ""].filter(Boolean).join(", ") || "Either";
     return "<tr><td>" + esc(r.o.name) + '</td><td class="muted">' + KIND_LABEL[r.o.kind] + '</td><td class="num">' + fmtTime(r.s.enter.d) +
@@ -1035,7 +1170,7 @@ function renderShowers() {
 let wx = null, wxState = "loading";
 async function loadWeather() {
   const url = "https://api.open-meteo.com/v1/forecast?latitude=" + cfg.lat + "&longitude=" + cfg.lon +
-    "&hourly=cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,visibility,relative_humidity_2m,dew_point_2m,temperature_2m,wind_speed_10m" +
+    "&hourly=cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,visibility,relative_humidity_2m,dew_point_2m,temperature_2m,wind_speed_10m,wind_speed_250hPa" +
     "&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=UTC&timeformat=unixtime&forecast_days=3";
   try {
     const ctl = new AbortController();
@@ -1047,13 +1182,21 @@ async function loadWeather() {
     const h = j.hourly;
     wx = h.time.map(function (t, i) {
       return { d: new Date(t * 1000), cc: h.cloud_cover[i], lo: h.cloud_cover_low[i], mid: h.cloud_cover_mid[i], hi: h.cloud_cover_high[i],
-        vis: h.visibility[i], rh: h.relative_humidity_2m[i], dp: h.dew_point_2m[i], temp: h.temperature_2m[i], wind: h.wind_speed_10m[i] };
+        vis: h.visibility[i], rh: h.relative_humidity_2m[i], dp: h.dew_point_2m[i], temp: h.temperature_2m[i], wind: h.wind_speed_10m[i],
+        jet: h.wind_speed_250hPa ? h.wind_speed_250hPa[i] : null };
     });
     wxState = "ok";
   } catch (e) {
     wxState = "blocked";
   }
   renderWeatherWindow();
+  renderPlanets();
+}
+function steadiness(jet) {
+  if (jet == null) return null;
+  if (jet < 35) return { label: "Steady likely", cls: "good" };
+  if (jet < 70) return { label: "Fair", cls: "warn" };
+  return { label: "Turbulent", cls: "bad" };
 }
 function renderWeatherWindow() {
   const pill = $("wxPill"), body = $("wxBody");
@@ -1086,7 +1229,9 @@ function renderWeatherWindow() {
     '<div class="kv"><span class="k">At ' + fmtHour(nowW.d) + '</span><span class="v">' + nowW.cc + "% cloud (L" + nowW.lo + " M" + nowW.mid + " H" + nowW.hi + ")</span></div>" +
     '<div class="kv"><span class="k">Temp / dew point</span><span class="v">' + Math.round(nowW.temp) + "° / " + Math.round(nowW.dp) + "°F</span></div>" +
     '<div class="kv"><span class="k">Humidity</span><span class="v">' + nowW.rh + "%</span></div>" +
-    '<div class="kv"><span class="k">Wind</span><span class="v">' + Math.round(nowW.wind) + " mph</span></div></div>";
+    '<div class="kv"><span class="k">Wind</span><span class="v">' + Math.round(nowW.wind) + " mph</span></div>" +
+    (nowW.jet != null ? '<div class="kv"><span class="k">Jet stream (seeing)</span><span class="v">' + Math.round(nowW.jet) + " mph · " + steadiness(nowW.jet).label + "</span></div>" : "") +
+    "</div>";
   const notes = [];
   if (bestRun) notes.push("Clearest stretch: <strong>" + fmtTime(bestRun.s) + "–" + fmtTime(new Date(bestRun.e.getTime() + HOUR)) + "</strong>.");
   else notes.push("No clear stretch in the forecast during full dark.");
@@ -1094,6 +1239,143 @@ function renderWeatherWindow() {
   if (nowW.wind > 12) notes.push("Breezy. The Seestar is light, so shelter it from gusts.");
   html += '<p class="note" style="margin:8px 0 0">' + notes.join(" ") + "</p>";
   body.innerHTML = html;
+}
+
+/* ---------------- Planet imaging ---------------- */
+const PLANET_RADIUS_KM = { Mercury: 2440, Venus: 6052, Mars: 3390, Jupiter: 71492, Saturn: 60268, Uranus: 25559, Neptune: 24764 };
+const AU_KM = 149597870.7, ETX_SCALE = 206.265 * 2.9 / 1470; // arcsec per pixel
+const CAPTURE_TIPS = {
+  Jupiter: "Region of interest about 640×480, 5–10 ms exposures, gain around 300. Record 60–90 seconds (Jupiter spins fast), then stack the best 10–25% of frames.",
+  Saturn: "10–25 ms exposures and higher gain. Record up to 3 minutes; Saturn turns slowly enough.",
+  Mars: "Record up to 3 minutes. Most of the detail is in the red channel, so steady air matters a lot.",
+  Venus: "Very short exposures. Image it in twilight or daylight while it's high, with the UV/IR-cut filter in place.",
+  Mercury: "Only in bright twilight or daylight. Never sweep near the Sun.",
+  Uranus: "20–40 ms exposures. You'll get a small blue-green disk; a dozen pixels across is a good result.",
+  Neptune: "Longer exposures (40 ms or more). The goal is a tiny blue disk and Triton nearby.",
+};
+let planetCache = { key: null, rows: [] };
+function planetNightRows() {
+  const key = night.sunset.getTime() + ":" + cfg.lat + ":" + cfg.lon;
+  if (planetCache.key === key) return planetCache.rows;
+  const rows = [];
+  PLANETS.forEach(function (p) {
+    const pts = [];
+    for (let t = night.sunset.getTime(); t <= night.sunrise.getTime(); t += 10 * MIN) {
+      const d = new Date(t), h = bodyHor(p, d);
+      pts.push({ d: d, alt: h.alt, sun: sunAlt(d) });
+    }
+    const inner = p === "Mercury" || p === "Venus";
+    const darkPts = pts.filter(function (q) { return q.sun < (inner ? -0.8 : -6); });
+    if (!darkPts.length) return;
+    const best = darkPts.reduce(function (a, b) { return b.alt > a.alt ? b : a; });
+    if (best.alt < 8) return;
+    const ok = pts.filter(function (q) { return q.alt >= 30 && q.sun < (inner ? -0.8 : -6); });
+    const tr = nextEvent(function () { return A.SearchHourAngle(A.Body[p], observer, 0, new Date(night.sunset.getTime() - 8 * HOUR)).time; });
+    const rise = tr && nextEvent(function () { return A.SearchRiseSet(A.Body[p], observer, +1, new Date(tr.getTime() - 14 * HOUR), 1); });
+    const set = tr && nextEvent(function () { return A.SearchRiseSet(A.Body[p], observer, -1, tr, 1); });
+    rows.push({ p: p, best: best, win: ok.length ? [ok[0].d, new Date(ok[ok.length - 1].d.getTime() + 10 * MIN)] : null, rise: rise, set: set });
+  });
+  planetCache = { key: key, rows: rows };
+  return rows;
+}
+function renderPlanets() {
+  if (!night) return;
+  const rows = planetNightRows();
+  const body = $("planetRows");
+  body.innerHTML = rows.length ? rows.map(function (r) {
+    const h = bodyHor(r.p, viewDate);
+    const diam = 2 * PLANET_RADIUS_KM[r.p] / (h.dist * AU_KM) * 206264.8;
+    const ill = A.Illumination(A.Body[r.p], viewDate);
+    const lit = (r.p === "Venus" || r.p === "Mars" || r.p === "Mercury") ? " · " + Math.round(ill.phase_fraction * 100) + "% lit" : "";
+    let steady = '<span class="muted">needs forecast</span>';
+    if (r.win && wx && wx.length && wx[0].jet != null) {
+      const hrs = wx.filter(function (w) { return w.d >= new Date(r.win[0].getTime() - 30 * MIN) && w.d <= r.win[1]; });
+      if (hrs.length) {
+        const jet = hrs.reduce(function (s, w) { return s + w.jet; }, 0) / hrs.length;
+        const st = steadiness(jet);
+        steady = '<span class="pill ' + st.cls + '">' + st.label + "</span> <span class=\"muted mono\">jet " + Math.round(jet) + " mph</span>";
+      }
+    } else if (!r.win) steady = '<span class="muted">—</span>';
+    return "<tr><td><strong>" + r.p + '</strong><br><span class="muted">mag ' + ill.mag.toFixed(1) + lit + "</span></td>" +
+      '<td class="num">' + diam.toFixed(1) + "″<br><span class=\"muted\">~" + Math.round(diam / ETX_SCALE) + " px</span></td>" +
+      '<td class="num">' + (r.rise ? fmtTime(r.rise) : "—") + " · " + Math.round(r.best.alt) + "° at " + fmtTime(r.best.d) + " · " + (r.set ? fmtTime(r.set) : "—") + "</td>" +
+      '<td class="num">' + (r.win ? fmtTime(r.win[0]) + "–" + fmtTime(r.win[1]) : "Stays low (peaks " + Math.round(r.best.alt) + "°)") + "</td>" +
+      "<td>" + steady + "</td></tr>";
+  }).join("") : '<tr><td colspan="5" class="muted">No planets are up tonight.</td></tr>';
+  const order = ["Jupiter", "Saturn", "Mars", "Venus", "Mercury", "Uranus", "Neptune"];
+  $("planetTips").innerHTML = order.filter(function (p) { return rows.some(function (r) { return r.p === p && r.win; }); })
+    .map(function (p) { return "<div><strong>" + p + ".</strong> " + CAPTURE_TIPS[p] + "</div>"; }).join("") +
+    '<div><strong>Every planet.</strong> Image when it is highest: below 30° you look through twice as much air. Let the ETX cool outside for 30–45 minutes first.</div>';
+  renderJupiterMoons();
+}
+function renderJupiterMoons() {
+  // Show the moons at the chosen time while Jupiter is up, otherwise at the start of its imaging window
+  let d = viewDate;
+  const jr = planetCache.rows.find(function (r) { return r.p === "Jupiter"; });
+  const jUp = bodyHor("Jupiter", viewDate).alt > 0;
+  if (!jUp && jr) d = jr.win ? jr.win[0] : jr.best.d;
+  $("joveTime").textContent = fmtTime(d);
+  const J = A.GeoVector(A.Body.Jupiter, d, true);
+  const jeq = A.EquatorFromVector(J);
+  const jd = Math.hypot(J.x, J.y, J.z);
+  const RJ = 71492 / (jd * AU_KM) * 206264.8; // arcsec
+  const mi = A.JupiterMoons(d);
+  const names = [["Io", mi.io], ["Europa", mi.europa], ["Ganymede", mi.ganymede], ["Callisto", mi.callisto]];
+  const moons = names.map(function (n) {
+    const P = new A.Vector(J.x + n[1].x, J.y + n[1].y, J.z + n[1].z, J.t);
+    const e = A.EquatorFromVector(P);
+    let dra = (e.ra - jeq.ra) * 15; if (dra > 180) dra -= 360; if (dra < -180) dra += 360;
+    const dx = dra * Math.cos(jeq.dec * DEG) * 3600, dy = (e.dec - jeq.dec) * 3600;
+    const inside = Math.hypot(dx, dy) < RJ;
+    const pd = Math.hypot(P.x, P.y, P.z);
+    return { name: n[0], dx: dx, dy: dy, state: inside ? (pd < jd ? "transit" : "hidden") : "clear" };
+  });
+  const c = $("joveCanvas"), cssW = c.clientWidth || 600, cssH = 110, dpr = window.devicePixelRatio || 1;
+  c.width = Math.round(cssW * dpr); c.height = Math.round(cssH * dpr);
+  const g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, cssW, cssH);
+  const span = Math.max(RJ * 6, Math.max.apply(null, moons.map(function (m) { return Math.abs(m.dx); })) * 1.1);
+  const sc = (cssW / 2 - 24) / span, cx = cssW / 2, cy = cssH / 2;
+  const R = Math.max(5, RJ * sc);
+  g.fillStyle = cssVar("--planet"); g.beginPath(); g.ellipse(cx, cy, R, R * 0.935, 0, 0, 2 * Math.PI); g.fill();
+  g.strokeStyle = ui.red ? "#3a0a0a" : "rgba(120,70,20,0.55)"; g.lineWidth = Math.max(1, R * 0.12);
+  [-0.28, 0.25].forEach(function (f) { g.beginPath(); g.moveTo(cx - R * 0.93, cy + f * R); g.lineTo(cx + R * 0.93, cy + f * R); g.stroke(); });
+  g.lineWidth = 1;
+  g.font = "11px " + cssVar("--font-body"); g.textAlign = "center";
+  moons.forEach(function (m, i) {
+    const x = cx - m.dx * sc, y = cy - m.dy * sc; // east to the left
+    g.fillStyle = cssVar("--ink"); g.strokeStyle = cssVar("--ink");
+    g.beginPath(); g.arc(x, y, 2.6, 0, 2 * Math.PI);
+    if (m.state === "hidden") g.stroke(); else g.fill();
+    g.fillStyle = cssVar("--muted");
+    g.fillText(m.name, x, i % 2 ? y + 18 : y - 9);
+  });
+  g.fillStyle = cssVar("--faint"); g.textAlign = "left"; g.fillText("E", 6, 14); g.textAlign = "right"; g.fillText("W", cssW - 6, 14); g.textAlign = "left";
+  const jh = bodyHor("Jupiter", d);
+  const ev = moons.filter(function (m) { return m.state !== "clear"; }).map(function (m) {
+    return m.state === "transit" ? m.name + " is crossing in front of Jupiter. Look for its dark shadow nearby." : m.name + " is hidden behind Jupiter.";
+  });
+  $("joveEvents").textContent = (jh.alt < 0 ? "Jupiter is below the horizon at this time. " : d !== viewDate ? "Jupiter isn't up yet, so this shows the start of its best window. " : "") +
+    (ev.length ? ev.join(" ") : "All four moons are clear of the disk.");
+}
+
+/* ---------------- Comets panel ---------------- */
+function renderComets() {
+  const sub = $("cometSub"), body = $("cometRows");
+  if (cometsState === "loading") { sub.textContent = "Loading comet list"; body.innerHTML = ""; return; }
+  if (cometsState === "none") {
+    sub.textContent = "";
+    body.innerHTML = '<tr><td colspan="6" class="muted">The comet list could not load here. It loads in the hosted app at robertdonovan666.github.io/sky-planner.</td></tr>';
+    return;
+  }
+  sub.textContent = cometsUpdated ? "Orbits updated " + fmtDay(cometsUpdated) : "Waiting for the first daily update";
+  const objs = current.objs.filter(function (o) { return o.kind === "comet" && o.mag <= 13.5; }).sort(function (a, b) { return a.mag - b.mag; });
+  body.innerHTML = objs.length ? objs.slice(0, 12).map(function (o) {
+    const best = samples.length ? summarizeTrack(trackFor(o.id, samples)).best : null;
+    const fit = [o.fit.seestar === 2 ? "Seestar" : o.fit.seestar ? "Seestar (faint)" : "", o.fit.etx === 2 ? "ETX" : ""].filter(Boolean).join(", ") || "Too faint";
+    return "<tr><td>" + esc(o.name) + '</td><td class="num">' + o.mag.toFixed(1) + '</td><td class="num">' + posText(o) + "</td>" +
+      '<td class="num">' + (best && best.alt > 0 ? Math.round(best.alt) + "° at " + fmtTime(best.d) : "below horizon") + "</td>" +
+      '<td class="num">' + o.st.delta.toFixed(2) + " · " + o.st.r.toFixed(2) + " AU</td><td>" + fit + "</td></tr>";
+  }).join("") : '<tr><td colspan="6" class="muted">No comets are predicted brighter than magnitude 13.5 right now.</td></tr>';
 }
 
 /* ---------------- Controls ---------------- */
@@ -1204,6 +1486,7 @@ function boot() {
   else setView(now, true);
   renderShowers();
   loadWeather();
+  loadComets();
   setInterval(function () { if (followNow) { const n = new Date(); if (n > night.sunrise) computeNight(n); setView(n, true); } }, 60000);
   let rt = null;
   window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(drawSky, 120); });

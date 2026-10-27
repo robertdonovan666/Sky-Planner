@@ -12,6 +12,8 @@ Live at **https://robertdonovan666.github.io/sky-planner/**
 - Hourly cloud cover for tonight (low/mid/high), dew risk and wind, from [Open-Meteo](https://open-meteo.com/)
 - What is up in your clear view right now, rated for the Seestar or the ETX, with moon-interference warnings
 - What rises into view later tonight, and active or upcoming meteor showers
+- Planet imaging for the ETX + ZWO camera: disk size in pixels, best window above 30°, jet-stream steadiness estimate, capture tips, and Jupiter's moons
+- Comets within reach, from Minor Planet Center orbits refreshed daily
 - Red-light mode to protect night vision
 
 ## Install on iPad or iPhone
@@ -26,5 +28,6 @@ A single static page with no build step:
 - `astronomy.browser.min.js`: [Astronomy Engine](https://github.com/cosinekitty/astronomy) 2.1.19 (MIT) for all positions and rise/set times
 - `sw.js`: offline cache. Bump `VERSION` when shell files change.
 - `manifest.webmanifest`, `icons/`: home-screen install
+- `comets.json`: comet orbits, rewritten daily by `.github/workflows/comets.yml` running `tools/update_comets.py`
 
 To add a target, append a row to the `CATALOG` array in `index.html` (`[id, name, kind, RA hours J2000, Dec degrees, magnitude, size arcmin, note]`). Location, clear-view azimuth range and minimum altitude are editable in the app's settings and saved per device.
