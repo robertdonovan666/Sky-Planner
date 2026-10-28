@@ -271,7 +271,7 @@ details.settings summary { cursor: pointer; font-weight: 600; }
   </section>
 
   <section class="panel" aria-label="Planet imaging">
-    <div class="panel-head"><h2>Planet imaging tonight</h2><span class="muted" style="font-size:.85rem">ETX at f/14 with a 2.9 µm ZWO camera ≈ 0.41″ per pixel</span></div>
+    <div class="panel-head"><h2>Planet imaging tonight</h2><span class="muted" style="font-size:.85rem">ETX-90 (1,250 mm, f/14) with a 2.9 µm ZWO camera ≈ 0.48″ per pixel</span></div>
     <div class="tablewrap"><table>
       <thead><tr><th>Planet</th><th>Disk</th><th>Rises · Highest · Sets</th><th>Best window (above 30°)</th><th>Steadiness</th></tr></thead>
       <tbody id="planetRows"></tbody>
@@ -345,7 +345,7 @@ details.settings summary { cursor: pointer; font-weight: 600; }
     </details>
   </section>
 
-  <p class="foot">Positions are computed on your device with Astronomy Engine. Cloud and jet-stream forecast from Open-Meteo. Comet orbits from the Minor Planet Center, refreshed daily. Seestar 50 field ≈ 1.3° × 0.7°; ETX 4″ assumes ~1,470 mm focal length (26 mm eyepiece ≈ 57×, ~0.9° field).</p>
+  <p class="foot">Positions are computed on your device with Astronomy Engine. Cloud and jet-stream forecast from Open-Meteo. Comet orbits from the Minor Planet Center, refreshed daily. Seestar 50 field ≈ 1.3° × 0.7°; ETX-90 has a 1,250 mm focal length (26 mm eyepiece ≈ 48×, ~1.1° field).</p>
 </div>
 
 <script src="astronomy.browser.min.js"></script>
@@ -1243,14 +1243,14 @@ function renderWeatherWindow() {
 
 /* ---------------- Planet imaging ---------------- */
 const PLANET_RADIUS_KM = { Mercury: 2440, Venus: 6052, Mars: 3390, Jupiter: 71492, Saturn: 60268, Uranus: 25559, Neptune: 24764 };
-const AU_KM = 149597870.7, ETX_SCALE = 206.265 * 2.9 / 1470; // arcsec per pixel
+const AU_KM = 149597870.7, ETX_SCALE = 206.265 * 2.9 / 1250; // arcsec per pixel
 const CAPTURE_TIPS = {
   Jupiter: "Region of interest about 640×480, 5–10 ms exposures, gain around 300. Record 60–90 seconds (Jupiter spins fast), then stack the best 10–25% of frames.",
   Saturn: "10–25 ms exposures and higher gain. Record up to 3 minutes; Saturn turns slowly enough.",
   Mars: "Record up to 3 minutes. Most of the detail is in the red channel, so steady air matters a lot.",
   Venus: "Very short exposures. Image it in twilight or daylight while it's high, with the UV/IR-cut filter in place.",
   Mercury: "Only in bright twilight or daylight. Never sweep near the Sun.",
-  Uranus: "20–40 ms exposures. You'll get a small blue-green disk; a dozen pixels across is a good result.",
+  Uranus: "20–40 ms exposures. You'll get a small blue-green disk; 7–8 pixels across is a good result.",
   Neptune: "Longer exposures (40 ms or more). The goal is a tiny blue disk and Triton nearby.",
 };
 let planetCache = { key: null, rows: [] };
