@@ -1,6 +1,6 @@
 // Offline support: the app shell is cached so the planner opens in the field without signal.
 // Bump VERSION whenever index.html or other shell files change.
-const VERSION = "sky-planner-v2";
+const VERSION = "sky-planner-v3";
 const SHELL = ["./", "index.html", "astronomy.browser.min.js", "manifest.webmanifest", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png", "comets.json"];
 
 self.addEventListener("install", (e) => {
